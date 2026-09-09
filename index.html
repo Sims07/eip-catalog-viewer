@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EIP Architecture Catalog</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#F0F5FF',
+              100: '#E0EAFF',
+              500: '#3B82F6',
+              800: '#0C419A',
+              900: '#092C6B',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- Header technique épuré sans logo Ameli -->
+  <header class="bg-slate-900 text-white shadow-sm border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-brand-800 text-white font-mono text-xs px-2.5 py-1 rounded font-bold tracking-wider uppercase border border-brand-500/30">
+          EIP
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-slate-100">Enterprise Integration Patterns</h1>
+          <p class="text-xs text-slate-400">Catalogue des patterns d'architecture d'intégration</p>
+        </div>
+      </div>
+
+      <!-- Recherche -->
+      <div class="w-full md:w-80">
+        <input 
+          type="text" 
+          id="searchInput"
+          placeholder="Rechercher un pattern, tag, concept..." 
+          class="w-full px-3.5 py-1.5 rounded-lg bg-slate-800 text-slate-100 placeholder-slate-400 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm transition"
+        />
+      </div>
+    </div>
+  </header>
+
+  <!-- Filtres par catégories -->
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-2 overflow-x-auto" id="categoryFilters">
+      <!-- Injecté via JS -->
+    </div>
+  </nav>
+
+  <!-- Grille de cartes -->
+  <main class="max-w-7xl mx-auto px-6 py-8 flex-1 w-full">
+    <div id="patternsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Injecté via JS -->
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+    <div class="max-w-7xl mx-auto px-6 text-center text-xs text-slate-500">
+      Référentiel d'architecture basés sur <i>Enterprise Integration Patterns</i> (Gregor Hohpe & Bobby Woolf).
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
