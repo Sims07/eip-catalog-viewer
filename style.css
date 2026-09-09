@@ -1,0 +1,14 @@
+#categoryFilters::-webkit-scrollbar {
+  display: none;
+}
+#categoryFilters {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Ajustement pour centrer les diagrammes Mermaid SVG */
+.mermaid svg {
+  max-height: 140px;
+  width: auto !important;
+  margin: 0 auto;
+}
