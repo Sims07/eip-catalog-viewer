@@ -3,7 +3,7 @@ const officialImages = {
   // Messaging Channels
   "point-to-point-channel": "https://www.enterpriseintegrationpatterns.com/img/PointToPointSolution.gif",
   "publish-subscribe": "https://www.enterpriseintegrationpatterns.com/img/PublishSubscribeSolution.gif",
-  "datatype-channel": "https://www.enterpriseintegrationpatterns.com/img/DatatypeChannelIcon.gif",
+  "datatype-channel": "https://www.enterpriseintegrationpatterns.com/img/DatatypeSolution.gif",
   "invalid-message-channel": "https://www.enterpriseintegrationpatterns.com/img/InvalidMessageSolution.gif",
   "dead-letter-channel": "https://www.enterpriseintegrationpatterns.com/img/DeadLetterChannelSolution.gif",
   "guaranteed-delivery": "https://www.enterpriseintegrationpatterns.com/img/GuaranteedMessagingSolution.gif",
