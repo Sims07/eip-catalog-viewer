@@ -1,33 +1,58 @@
-# 🧩 Enterprise Integration Patterns (EIP) — Catalog
+# EIP Architecture Catalog
 
-Un catalogue web interactif et moderne répertoriant les principaux **Enterprise Integration Patterns (EIP)** (basé sur les travaux de Gregor Hohpe & Bobby Woolf). 
+## Structure
 
-Conçu pour les architectes logicielle, développeurs et tech leads souhaitant consulter, filtrer et documenter rapidement leurs architectures d'intégration.
-
----
-
-## 🚀 Fonctionnalités
-
-- **🔍 Recherche instantanée** : Filtrage en temps réel par nom, problème, solution ou tags (`#Queue`, `#Topic`, `#DLQ`...).
-- **🏷️ Filtres par catégories** : Navigation fluide parmi les grandes familles d'EIP (*Messaging Channels*, *Message Routing*, *Message Transformation*, *Messaging Endpoints*, *System Management*).
-- **📋 Copie Markdown en 1 clic** : Génère directement le snippet Markdown d'un pattern (titre, schéma officiel, problème, solution et lien) pour enrichir tes documentations d'architecture (Architecture Decision Records, wikis, README).
-- **🎨 Design System Moderne & Adaptatif** : Interface épurée avec contrastes optimisés, concue en Tailwind CSS.
-- **⚡ 100 % Autonome (Zero Build)** : Fonctionne directement dans le navigateur via Tailwind CDN, sans étape de compilation ni dépendance lourde.
-
----
-
-## 🛠️ Stack Technique
-
-* **HTML5 / JavaScript (ES6+)** — Logique applicative et rendu dynamique.
-* **Tailwind CSS (via CDN)** — Styling utility-first et thématisation.
-* **EIP Official Assets** — Schémas officiels issus de [enterpriseintegrationpatterns.com](https://www.enterpriseintegrationpatterns.com).
-
----
-
-## 📂 Structure du projet
+Le catalogue sépare désormais le référentiel EIP du moteur de l'application :
 
 ```text
-.
-├── index.html   # Structure HTML5 & configuration Tailwind CSS
-├── app.js       # Base de données des patterns, logique de recherche & rendu JS
-└── README.md    # Documentation du projet
+eip-catalog/
+├── index.html
+├── app.js
+├── style.css
+└── data/
+    └── eips.json
+```
+
+- `app.js` : comportement de l'interface, recherche, filtres, popup et rendu des diagrammes.
+- `style.css` : présentation.
+- `data/eips.json` : source de vérité du catalogue EIP.
+
+## Référentiel JSON
+
+`data/eips.json` contient les 65 entrées du catalogue :
+
+- 4 Integration Styles
+- 10 Messaging Channels
+- 10 Message Construction
+- 14 Message Routing
+- 7 Message Transformation
+- 12 Messaging Endpoints
+- 8 System Management
+
+Chaque pattern contient :
+
+- `id`, `name`, `category`
+- `summary`, `problem`, `solution`
+- `tags`, `aliases`
+- `official.url`, `official.diagram`
+- `technical.stack`, `technical.description`
+- `technical.diagram.nodes`, `technical.diagram.edges`
+- `relatedPatterns`
+
+Les schémas techniques sont des adaptations Kafka + Spring Boot propres à cette application ; ils ne constituent pas le schéma officiel EIP.
+
+## Lancement
+
+Le navigateur doit charger `data/eips.json` via HTTP. L'ouverture directe de `index.html` avec `file://` peut bloquer `fetch()`.
+
+Exemple avec Python :
+
+```bash
+python3 -m http.server 8080
+```
+
+Puis ouvrir `http://localhost:8080/`.
+
+## Source
+
+Référentiel officiel : https://www.enterpriseintegrationpatterns.com/patterns/messaging/index.html

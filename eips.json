@@ -1,0 +1,5794 @@
+{
+  "metadata": {
+    "name": "Enterprise Integration Patterns",
+    "catalog": "Messaging Patterns",
+    "catalogCount": 65,
+    "source": "Enterprise Integration Patterns",
+    "sourceUrl": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/index.html",
+    "license": "CC BY (see official site)",
+    "lastUpdated": "2026-09-11"
+  },
+  "categories": [
+    {
+      "id": "integration-styles",
+      "name": "Integration Styles",
+      "description": "Styles d’intégration décrivant les grandes façons de faire collaborer des applications."
+    },
+    {
+      "id": "messaging-channels",
+      "name": "Messaging Channels",
+      "description": "Canaux utilisés pour transporter les messages."
+    },
+    {
+      "id": "message-construction",
+      "name": "Message Construction",
+      "description": "Intent, forme et contenu des messages."
+    },
+    {
+      "id": "message-routing",
+      "name": "Message Routing",
+      "description": "Acheminement des messages vers le ou les bons destinataires."
+    },
+    {
+      "id": "message-transformation",
+      "name": "Message Transformation",
+      "description": "Adaptation et transformation du contenu des messages."
+    },
+    {
+      "id": "messaging-endpoints",
+      "name": "Messaging Endpoints",
+      "description": "Connexion des applications aux canaux de messagerie pour produire et consommer des messages."
+    },
+    {
+      "id": "system-management",
+      "name": "System Management",
+      "description": "Administration, observation et exploitation des systèmes de messagerie."
+    }
+  ],
+  "patterns": [
+    {
+      "id": "point-to-point-channel",
+      "name": "Point-to-Point Channel",
+      "category": "messaging-channels",
+      "summary": "Garantit qu'un seul consommateur traite chaque message envoyé.",
+      "problem": "Comment s'assurer qu'un message sur un canal n'est consommé que par un unique destinataire ?",
+      "solution": "Utiliser une file (Queue) où chaque message est extrait par un seul récepteur.",
+      "tags": [
+        "Queue",
+        "Unicast",
+        "1-to-1"
+      ],
+      "aliases": [
+        "P2P",
+        "Queue"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/PointToPointChannel.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/PointToPointSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le canal Point-to-Point est réalisé par un topic Kafka consommé par un seul groupe de consommateurs (groupId unique). Même si le topic est partitionné pour absorber la charge, Kafka garantit qu'une partition — donc chaque message — n'est traitée que par une seule instance du groupe à la fois : la sémantique « un seul récepteur par message » est obtenue sans file dédiée par consommateur.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p1",
+              "type": "service",
+              "label": "Order Service",
+              "x": 20,
+              "y": 40
+            },
+            {
+              "id": "t1",
+              "type": "topic",
+              "label": "orders.created",
+              "sub": "3 partitions",
+              "x": 260,
+              "y": 40
+            },
+            {
+              "id": "c1",
+              "type": "service",
+              "label": "Billing Service",
+              "sub": "groupId=billing-service",
+              "x": 500,
+              "y": 40
+            }
+          ],
+          "edges": [
+            {
+              "from": "p1",
+              "to": "t1",
+              "label": "produce"
+            },
+            {
+              "from": "t1",
+              "to": "c1",
+              "label": "consume (1 seul groupe)"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "publish-subscribe",
+      "name": "Publish-Subscribe Channel",
+      "category": "messaging-channels",
+      "summary": "Diffuse un message à tous les consommateurs abonnés au canal.",
+      "problem": "Comment délivrer la même information à plusieurs destinataires simultanément ?",
+      "solution": "Envoyer le message sur un canal Pub/Sub (Topic) qui le duplique vers chaque abonné.",
+      "tags": [
+        "Topic",
+        "Broadcast",
+        "Event-Driven"
+      ],
+      "aliases": [
+        "Pub/Sub",
+        "Publish Subscribe",
+        "Topic"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/PublishSubscribeChannel.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/PublishSubscribeSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le broadcast Pub/Sub est natif à Kafka : chaque groupe de consommateurs indépendant (groupId différent) reçoit sa propre copie complète du topic. Là où Point-to-Point utilise un seul groupe, ici on déclare autant de groupIds que de familles de consommateurs, sans dupliquer physiquement les données sur le broker.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "pub",
+              "type": "service",
+              "label": "Notification Service",
+              "x": 20,
+              "y": 140
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "notifications.events",
+              "sub": "topic partagé (broadcast)",
+              "x": 260,
+              "y": 140
+            },
+            {
+              "id": "c1",
+              "type": "service",
+              "label": "Email Service",
+              "sub": "groupId=email-svc",
+              "x": 500,
+              "y": 20
+            },
+            {
+              "id": "c2",
+              "type": "service",
+              "label": "SMS Service",
+              "sub": "groupId=sms-svc",
+              "x": 500,
+              "y": 140
+            },
+            {
+              "id": "c3",
+              "type": "service",
+              "label": "Push Service",
+              "sub": "groupId=push-svc",
+              "x": 500,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "pub",
+              "to": "t",
+              "label": "produce"
+            },
+            {
+              "from": "t",
+              "to": "c1",
+              "label": "consume (groupe indép.)"
+            },
+            {
+              "from": "t",
+              "to": "c2",
+              "label": "consume (groupe indép.)"
+            },
+            {
+              "from": "t",
+              "to": "c3",
+              "label": "consume (groupe indép.)"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "datatype-channel",
+      "name": "Datatype Channel",
+      "category": "messaging-channels",
+      "summary": "Dédie un canal spécifique à un type de donnée particulier.",
+      "problem": "Comment s'assurer qu'un consommateur ne reçoit que des messages qu'il sait traiter ?",
+      "solution": "Créer des canaux séparés pour chaque structure de payload ou type de contrat.",
+      "tags": [
+        "Typage",
+        "Routing",
+        "Schema"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/DatatypeChannel.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/DatatypeSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Chaque type de message correspond à un topic dédié et à un schéma déclaré dans le Schema Registry (Avro/Protobuf). Producteurs et consommateurs sérialisent/désérialisent selon ce contrat partagé : un message ne peut pas être publié sur le mauvais topic sans échouer la validation de schéma, ce qui matérialise le typage fort du canal.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p1",
+              "type": "service",
+              "label": "Order Service",
+              "x": 20,
+              "y": 20
+            },
+            {
+              "id": "t1",
+              "type": "topic",
+              "label": "orders.v1",
+              "sub": "Avro: OrderCreated",
+              "x": 260,
+              "y": 20
+            },
+            {
+              "id": "c1",
+              "type": "service",
+              "label": "Order Consumer",
+              "x": 500,
+              "y": 20
+            },
+            {
+              "id": "p2",
+              "type": "service",
+              "label": "Invoice Service",
+              "x": 20,
+              "y": 200
+            },
+            {
+              "id": "t2",
+              "type": "topic",
+              "label": "invoices.v1",
+              "sub": "Avro: InvoiceIssued",
+              "x": 260,
+              "y": 200
+            },
+            {
+              "id": "c2",
+              "type": "service",
+              "label": "Invoice Consumer",
+              "x": 500,
+              "y": 200
+            },
+            {
+              "id": "reg",
+              "type": "registry",
+              "label": "Schema Registry",
+              "x": 260,
+              "y": 120
+            }
+          ],
+          "edges": [
+            {
+              "from": "p1",
+              "to": "t1",
+              "label": "produce"
+            },
+            {
+              "from": "t1",
+              "to": "c1",
+              "label": "consume"
+            },
+            {
+              "from": "p2",
+              "to": "t2",
+              "label": "produce"
+            },
+            {
+              "from": "t2",
+              "to": "c2",
+              "label": "consume"
+            },
+            {
+              "from": "t1",
+              "to": "reg",
+              "label": "schema check",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "color": "#0891B2"
+            },
+            {
+              "from": "t2",
+              "to": "reg",
+              "label": "schema check",
+              "fromSide": "top",
+              "toSide": "bottom",
+              "color": "#0891B2"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "invalid-message-channel",
+      "name": "Invalid Message Channel",
+      "category": "messaging-channels",
+      "summary": "Isole les messages malformés ou ne respectant pas le schéma attendu.",
+      "problem": "Que faire lorsqu'un message reçu est illisible ou invalide ?",
+      "solution": "Dérouter immédiatement le message vers un canal dédié aux erreurs de formatage.",
+      "tags": [
+        "Validation",
+        "Error",
+        "Parsing"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/InvalidMessageChannel.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/InvalidMessageSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un service de validation consomme le flux brut, applique les règles de schéma (Bean Validation / JSON Schema) et republie chaque message soit sur le topic valide, soit sur un topic dédié aux messages invalides, sans jamais laisser un message malformé atteindre les consommateurs métier.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Orders API",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "orders.raw",
+              "x": 250,
+              "y": 100
+            },
+            {
+              "id": "val",
+              "type": "service",
+              "label": "Validation Service",
+              "sub": "JSON Schema / Bean Validation",
+              "x": 470,
+              "y": 100
+            },
+            {
+              "id": "tok",
+              "type": "topic",
+              "label": "orders.valid",
+              "x": 710,
+              "y": 20
+            },
+            {
+              "id": "terr",
+              "type": "topic",
+              "label": "orders.invalid",
+              "x": 710,
+              "y": 200
+            },
+            {
+              "id": "cok",
+              "type": "service",
+              "label": "Order Processor",
+              "x": 940,
+              "y": 20
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "tin",
+              "label": "produce"
+            },
+            {
+              "from": "tin",
+              "to": "val",
+              "label": "consume"
+            },
+            {
+              "from": "val",
+              "to": "tok",
+              "label": "valide"
+            },
+            {
+              "from": "val",
+              "to": "terr",
+              "label": "invalide",
+              "style": "dashed",
+              "color": "#DC2626"
+            },
+            {
+              "from": "tok",
+              "to": "cok",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "dead-letter-channel",
+      "name": "Dead Letter Channel",
+      "category": "messaging-channels",
+      "summary": "Capture les messages impossibles à traiter après plusieurs tentatives.",
+      "problem": "Où stocker les messages rejetés par l'application pour rejeu ou analyse ultérieure ?",
+      "solution": "Rediriger automatiquement les messages en échec vers une file d'attente Morte (DLQ).",
+      "tags": [
+        "DLQ",
+        "Retry",
+        "Fault Tolerance"
+      ],
+      "aliases": [
+        "DLQ",
+        "DLT",
+        "Dead Letter",
+        "Dead Letter Queue"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/DeadLetterChannel.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/DeadLetterChannelSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le traitement s'appuie sur le mécanisme d'erreur de Spring Kafka : un DefaultErrorHandler retente la consommation un nombre de fois configurable ; en cas d'échecs répétés, un DeadLetterPublishingRecoverer republie automatiquement le message en échec sur un topic dédié (suffixe .DLT), sans bloquer le reste de la partition. Le message reste disponible pour inspection ou rejeu ultérieur.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p1",
+              "type": "service",
+              "label": "Payment Service",
+              "x": 20,
+              "y": 40
+            },
+            {
+              "id": "t1",
+              "type": "topic",
+              "label": "payments.events",
+              "x": 260,
+              "y": 40
+            },
+            {
+              "id": "c1",
+              "type": "service",
+              "label": "Payment Processor",
+              "sub": "retry x3 (backoff)",
+              "x": 500,
+              "y": 40
+            },
+            {
+              "id": "dlq",
+              "type": "dlq",
+              "label": "payments.events.DLT",
+              "sub": "DeadLetterPublishingRecoverer",
+              "x": 500,
+              "y": 190
+            }
+          ],
+          "edges": [
+            {
+              "from": "p1",
+              "to": "t1",
+              "label": "produce"
+            },
+            {
+              "from": "t1",
+              "to": "c1",
+              "label": "consume"
+            },
+            {
+              "from": "c1",
+              "to": "dlq",
+              "label": "échec après 3 tentatives",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed",
+              "color": "#DC2626"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "guaranteed-delivery",
+      "name": "Guaranteed Delivery",
+      "category": "messaging-channels",
+      "summary": "Assure la persistance du message même en cas de panne du serveur.",
+      "problem": "Comment garantir qu'un message ne sera pas perdu si le broker redémarre ?",
+      "solution": "Écrire le message sur un stockage persistant avant d'en accuser réception.",
+      "tags": [
+        "Persistence",
+        "Reliability",
+        "Store-and-Forward"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/GuaranteedDelivery.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/GuaranteedMessagingSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "La garantie de livraison Kafka repose sur trois réglages combinés : un producteur avec acks=all et idempotence activée, un topic répliqué sur plusieurs brokers (replication.factor≥3) pour survivre à une panne, et un consommateur qui ne committe son offset qu'après traitement complet du message (at-least-once).",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Payment Service",
+              "sub": "acks=all, idempotent",
+              "x": 20,
+              "y": 60
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "payments.events",
+              "sub": "replication.factor=3",
+              "x": 260,
+              "y": 60
+            },
+            {
+              "id": "store",
+              "type": "store",
+              "label": "Log répliqué",
+              "sub": "3 brokers",
+              "x": 260,
+              "y": 220
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Ledger Service",
+              "sub": "commit manuel après traitement",
+              "x": 500,
+              "y": 60
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "produce (acks=all)"
+            },
+            {
+              "from": "t",
+              "to": "store",
+              "label": "persisté + répliqué",
+              "fromSide": "bottom",
+              "toSide": "top"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume + ack manuel"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-bus",
+      "name": "Message Bus",
+      "category": "messaging-channels",
+      "summary": "Fournit une infrastructure commune de découplage pour toutes les applications.",
+      "problem": "Comment faire interagir N applications hétérogènes sans créer de liens point-à-point ?",
+      "solution": "Combiner un schéma canonique, un bus de messages et des adaptateurs par application.",
+      "tags": [
+        "ESB",
+        "Architecture",
+        "Decoupling"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageBus.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageBusSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le Message Bus est matérialisé par le cluster Kafka lui-même : toutes les applications publient et consomment via un format canonique validé par un Schema Registry central, chaque système legacy étant isolé par un adaptateur Spring Boot dédié. Le bus ne connaît aucune application spécifique, seulement des topics et des contrats de schéma.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "s1",
+              "type": "service",
+              "label": "CRM Service",
+              "x": 20,
+              "y": 20
+            },
+            {
+              "id": "s2",
+              "type": "service",
+              "label": "Billing Service",
+              "x": 20,
+              "y": 280
+            },
+            {
+              "id": "hub",
+              "type": "topic",
+              "label": "Message Bus",
+              "sub": "Kafka Cluster",
+              "x": 380,
+              "y": 150,
+              "w": 200
+            },
+            {
+              "id": "s3",
+              "type": "external",
+              "label": "Legacy ERP",
+              "sub": "via adaptateur",
+              "x": 740,
+              "y": 20
+            },
+            {
+              "id": "s4",
+              "type": "service",
+              "label": "Analytics Service",
+              "x": 740,
+              "y": 280
+            },
+            {
+              "id": "reg",
+              "type": "registry",
+              "label": "Schema Registry",
+              "sub": "format canonique",
+              "x": 380,
+              "y": 340,
+              "w": 200
+            }
+          ],
+          "edges": [
+            {
+              "from": "s1",
+              "to": "hub",
+              "label": "publie"
+            },
+            {
+              "from": "hub",
+              "to": "s2",
+              "label": "souscrit"
+            },
+            {
+              "from": "hub",
+              "to": "s3",
+              "label": "publie (adaptateur)"
+            },
+            {
+              "from": "s4",
+              "to": "hub",
+              "label": "souscrit",
+              "fromSide": "left",
+              "toSide": "right"
+            },
+            {
+              "from": "hub",
+              "to": "reg",
+              "label": "valide schéma",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed",
+              "color": "#0891B2"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-router",
+      "name": "Message Router",
+      "category": "message-routing",
+      "summary": "Achemine un message vers sa destination en fonction de critères dynamiques.",
+      "problem": "Comment isoler l'émetteur de la topologie réseau des destinataires ?",
+      "solution": "Intercaler un composant qui inspecte le contexte et choisit le canal de sortie.",
+      "tags": [
+        "Routing",
+        "Decoupling"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageRouter.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageRouter.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Contrairement au Content-Based Router qui inspecte le payload métier, ce routeur générique s'appuie sur un header technique Kafka (ex. région) positionné en amont, ce qui permet de router sans désérialiser ni coupler le routeur au schéma métier du message.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Shipment Gateway",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "shipments.incoming",
+              "x": 250,
+              "y": 100
+            },
+            {
+              "id": "r",
+              "type": "service",
+              "label": "Shipment Router",
+              "sub": "route sur header région",
+              "x": 470,
+              "y": 100
+            },
+            {
+              "id": "tA",
+              "type": "topic",
+              "label": "shipments.eu",
+              "x": 710,
+              "y": 20
+            },
+            {
+              "id": "tB",
+              "type": "topic",
+              "label": "shipments.us",
+              "x": 710,
+              "y": 200
+            },
+            {
+              "id": "cA",
+              "type": "service",
+              "label": "EU Fulfillment Svc",
+              "x": 940,
+              "y": 20
+            },
+            {
+              "id": "cB",
+              "type": "service",
+              "label": "US Fulfillment Svc",
+              "x": 940,
+              "y": 200
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "tin",
+              "label": "produce"
+            },
+            {
+              "from": "tin",
+              "to": "r",
+              "label": "consume"
+            },
+            {
+              "from": "r",
+              "to": "tA",
+              "label": "header.region=EU"
+            },
+            {
+              "from": "r",
+              "to": "tB",
+              "label": "header.region=US"
+            },
+            {
+              "from": "tA",
+              "to": "cA",
+              "label": "consume"
+            },
+            {
+              "from": "tB",
+              "to": "cB",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "content-based-router",
+      "name": "Content-Based Router",
+      "category": "message-routing",
+      "summary": "Régit l'aiguillage d'un message en fonction du contenu de son payload.",
+      "problem": "Comment router un message lorsque le destinataire dépend de données métier ?",
+      "solution": "Inspecter les champs du message (JSON, XML, FHIR) et évaluer des règles métier.",
+      "tags": [
+        "Payload",
+        "Rules Engine",
+        "Routing"
+      ],
+      "aliases": [
+        "CBR"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ContentBasedRouter.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le routage est porté par un microservice Spring Boot dédié, stateless, qui consomme le topic d'entrée et republie chaque message vers l'un des topics de sortie selon une règle évaluée sur le contenu du payload (ex. champ type). Les microservices avals n'ont aucune connaissance du routage : ils s'abonnent uniquement au topic qui les concerne, ce qui découple émetteur, règles de routage et consommateurs.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "gw",
+              "type": "service",
+              "label": "Claims Gateway",
+              "x": 20,
+              "y": 140
+            },
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "claims.incoming",
+              "x": 240,
+              "y": 140
+            },
+            {
+              "id": "router",
+              "type": "service",
+              "label": "Claims Router",
+              "sub": "stateless, sans état métier",
+              "x": 460,
+              "y": 140
+            },
+            {
+              "id": "th",
+              "type": "topic",
+              "label": "claims.health",
+              "x": 700,
+              "y": 20
+            },
+            {
+              "id": "ta",
+              "type": "topic",
+              "label": "claims.auto",
+              "x": 700,
+              "y": 140
+            },
+            {
+              "id": "to",
+              "type": "topic",
+              "label": "claims.other",
+              "x": 700,
+              "y": 260
+            },
+            {
+              "id": "ch",
+              "type": "service",
+              "label": "Health Claims Svc",
+              "x": 940,
+              "y": 20
+            },
+            {
+              "id": "ca",
+              "type": "service",
+              "label": "Auto Claims Svc",
+              "x": 940,
+              "y": 140
+            },
+            {
+              "id": "co",
+              "type": "service",
+              "label": "Other Claims Svc",
+              "x": 940,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "gw",
+              "to": "tin",
+              "label": "produce"
+            },
+            {
+              "from": "tin",
+              "to": "router",
+              "label": "consume"
+            },
+            {
+              "from": "router",
+              "to": "th",
+              "label": "type=HEALTH"
+            },
+            {
+              "from": "router",
+              "to": "ta",
+              "label": "type=AUTO"
+            },
+            {
+              "from": "router",
+              "to": "to",
+              "label": "type=OTHER"
+            },
+            {
+              "from": "th",
+              "to": "ch",
+              "label": "consume"
+            },
+            {
+              "from": "ta",
+              "to": "ca",
+              "label": "consume"
+            },
+            {
+              "from": "to",
+              "to": "co",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-filter",
+      "name": "Message Filter",
+      "category": "message-routing",
+      "summary": "Élimine les messages qui ne satisfont pas à certains critères.",
+      "problem": "Comment ignorer les messages non pertinents sur un canal ?",
+      "solution": "Évaluer un prédicat et détruire le message s'il ne remplit pas la condition.",
+      "tags": [
+        "Filter",
+        "Predicate",
+        "Drop"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Filter.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageFilter.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le filtre est un microservice Spring Boot sans état qui évalue un prédicat sur chaque message ; seuls les messages qui le valident sont republiés sur le topic de sortie. Les messages rejetés ne sont jamais écrits nulle part : ils sont simplement ignorés, sans commit de production inutile côté aval.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Metrics Producer",
+              "x": 20,
+              "y": 60
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "metrics.raw",
+              "x": 260,
+              "y": 60
+            },
+            {
+              "id": "f",
+              "type": "service",
+              "label": "Metrics Filter",
+              "sub": "predicate: value > seuil",
+              "x": 500,
+              "y": 60
+            },
+            {
+              "id": "tout",
+              "type": "topic",
+              "label": "metrics.significant",
+              "x": 740,
+              "y": 60
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Alerting Service",
+              "x": 980,
+              "y": 60
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "produce"
+            },
+            {
+              "from": "t",
+              "to": "f",
+              "label": "consume"
+            },
+            {
+              "from": "f",
+              "to": "tout",
+              "label": "publie si retenu"
+            },
+            {
+              "from": "tout",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "dynamic-router",
+      "name": "Dynamic Router",
+      "category": "message-routing",
+      "summary": "Modifie les règles de routage au fil du temps sans redémarrer le système.",
+      "problem": "Comment mettre à jour les routes en temps réel selon l'état du système ?",
+      "solution": "Consulter une table ou un annuaire de règles externe mis à jour dynamiquement.",
+      "tags": [
+        "Dynamic",
+        "Rules",
+        "Config"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/DynamicRouter.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/DynamicRouter.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le routeur interroge à chaque message une table de règles externe (Postgres, rafraîchie sans redéploiement) pour déterminer dynamiquement le topic cible. Changer une règle de routage revient à modifier une ligne en base, pas à changer le code du microservice.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Order Gateway",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "orders.incoming",
+              "x": 250,
+              "y": 100
+            },
+            {
+              "id": "r",
+              "type": "service",
+              "label": "Dynamic Router",
+              "sub": "consulte les règles à chaque message",
+              "x": 470,
+              "y": 100
+            },
+            {
+              "id": "rules",
+              "type": "store",
+              "label": "routing_rules",
+              "sub": "PostgreSQL",
+              "x": 470,
+              "y": 260
+            },
+            {
+              "id": "tdyn",
+              "type": "topic",
+              "label": "orders.* (cible résolue)",
+              "x": 730,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Fulfillment Svc",
+              "x": 970,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "tin",
+              "label": "produce"
+            },
+            {
+              "from": "tin",
+              "to": "r",
+              "label": "consume"
+            },
+            {
+              "from": "r",
+              "to": "rules",
+              "label": "lookup règle active",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed"
+            },
+            {
+              "from": "r",
+              "to": "tdyn",
+              "label": "publie vers cible résolue"
+            },
+            {
+              "from": "tdyn",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "recipient-list",
+      "name": "Recipient List",
+      "category": "message-routing",
+      "summary": "Transmet un message à une liste de destinataires calculée à la volée.",
+      "problem": "Comment diffuser un message à plusieurs consommateurs dont la liste varie selon le contexte ?",
+      "solution": "Inspecter le message pour établir la liste des canaux cibles et y publier le message.",
+      "tags": [
+        "Multicast",
+        "Dynamic",
+        "List"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/RecipientList.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/RecipientList.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "À la différence du Content-Based Router (un seul topic cible choisi), le Recipient List publie simultanément sur tous les topics correspondant à la liste de destinataires calculée pour ce message — liste elle-même déterminée par une table de souscriptions externe consultée à chaque événement.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Alert Gateway",
+              "x": 20,
+              "y": 140
+            },
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "alerts.incoming",
+              "x": 250,
+              "y": 140
+            },
+            {
+              "id": "r",
+              "type": "service",
+              "label": "Recipient Resolver",
+              "sub": "consulte les abonnés concernés",
+              "x": 470,
+              "y": 140
+            },
+            {
+              "id": "reg2",
+              "type": "store",
+              "label": "subscriptions",
+              "sub": "PostgreSQL",
+              "x": 470,
+              "y": 320
+            },
+            {
+              "id": "t1",
+              "type": "topic",
+              "label": "alerts.ops-team",
+              "x": 730,
+              "y": 20
+            },
+            {
+              "id": "t2",
+              "type": "topic",
+              "label": "alerts.oncall",
+              "x": 730,
+              "y": 140
+            },
+            {
+              "id": "t3",
+              "type": "topic",
+              "label": "alerts.audit",
+              "x": 730,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "tin",
+              "label": "produce"
+            },
+            {
+              "from": "tin",
+              "to": "r",
+              "label": "consume"
+            },
+            {
+              "from": "r",
+              "to": "reg2",
+              "label": "liste des destinataires",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed"
+            },
+            {
+              "from": "r",
+              "to": "t1",
+              "label": "multicast"
+            },
+            {
+              "from": "r",
+              "to": "t2",
+              "label": "multicast"
+            },
+            {
+              "from": "r",
+              "to": "t3",
+              "label": "multicast"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "splitter",
+      "name": "Splitter",
+      "category": "message-routing",
+      "summary": "Divise un message composite contenant plusieurs éléments en sous-messages.",
+      "problem": "Comment traiter les éléments d'une liste ou d'un lot de manière individuelle ?",
+      "solution": "Iterer sur la collection et émettre N messages simples vers le canal de traitement.",
+      "tags": [
+        "Batch",
+        "Decompose",
+        "Loop"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Splitter.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/Sequencer.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le splitter est un microservice qui consomme un message composite et republie chacun de ses éléments comme message Kafka indépendant sur un topic de sortie, en propageant un Correlation ID commun (utile pour un Aggregator en aval). Les consommateurs avals peuvent alors scaler horizontalement sur ce flux plus granulaire.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Batch Import Service",
+              "x": 20,
+              "y": 60
+            },
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "orders.batch",
+              "sub": "1 message = N commandes",
+              "x": 260,
+              "y": 60
+            },
+            {
+              "id": "s",
+              "type": "service",
+              "label": "Order Splitter",
+              "sub": "1 message émis par item",
+              "x": 500,
+              "y": 60
+            },
+            {
+              "id": "tout",
+              "type": "topic",
+              "label": "orders.items",
+              "x": 740,
+              "y": 60
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Item Processor",
+              "sub": "x3, groupId=item-proc",
+              "x": 980,
+              "y": 60
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "tin",
+              "label": "produce"
+            },
+            {
+              "from": "tin",
+              "to": "s",
+              "label": "consume (1 batch)"
+            },
+            {
+              "from": "s",
+              "to": "tout",
+              "label": "publie N messages"
+            },
+            {
+              "from": "tout",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "aggregator",
+      "name": "Aggregator",
+      "category": "message-routing",
+      "summary": "Combine une série de messages individuels en un seul message composite.",
+      "problem": "Comment regrouper les résultats de traitements parallèles pour émettre une synthèse ?",
+      "solution": "Stocker les messages partageant une même Correlation ID et publier le tout au complet.",
+      "tags": [
+        "Join",
+        "Stateful",
+        "Correlation"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/Aggregator.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "L'agrégation est implémentée avec Kafka Streams : les messages partageant le même Correlation ID sont accumulés dans un state store local (RocksDB, fenêtré dans le temps) jusqu'à ce que le groupe soit complet ou que la fenêtre expire, avant d'émettre un seul message consolidé en sortie.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "quotes.partial",
+              "sub": "même correlationId",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "agg",
+              "type": "streams",
+              "label": "Quote Aggregator",
+              "sub": "state store, fenêtre 30s",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "store",
+              "type": "store",
+              "label": "RocksDB",
+              "sub": "state store local",
+              "x": 280,
+              "y": 260
+            },
+            {
+              "id": "tout",
+              "type": "topic",
+              "label": "quotes.complete",
+              "x": 560,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Pricing Service",
+              "x": 800,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "tin",
+              "to": "agg",
+              "label": "consume"
+            },
+            {
+              "from": "agg",
+              "to": "store",
+              "label": "buffer par correlationId",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed"
+            },
+            {
+              "from": "agg",
+              "to": "tout",
+              "label": "publie si groupe complet"
+            },
+            {
+              "from": "tout",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "resequencer",
+      "name": "Resequencer",
+      "category": "message-routing",
+      "summary": "Réordonne des messages arrivés dans le désordre.",
+      "problem": "Comment garantir le traitement séquentiel lorsque le réseau réordonne les paquets ?",
+      "solution": "Tamponner les messages, les trier selon leur numéro de séquence et les réémettre ordonnés.",
+      "tags": [
+        "Ordering",
+        "Buffer",
+        "Sequence"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/Resequencer.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le réordonnancement est réalisé par un processeur Kafka Streams qui tamponne temporairement les messages dans son state store, les trie selon leur numéro de séquence, puis les republie dans l'ordre attendu sur le topic de sortie — un cas d'usage classique de state store fenêtré local à l'instance.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "events.unordered",
+              "sub": "multi-partitions",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "rs",
+              "type": "streams",
+              "label": "Event Resequencer",
+              "sub": "state store, tri par séquence",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "store",
+              "type": "store",
+              "label": "RocksDB",
+              "sub": "state store local",
+              "x": 280,
+              "y": 260
+            },
+            {
+              "id": "tout",
+              "type": "topic",
+              "label": "events.ordered",
+              "x": 560,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Audit Trail Service",
+              "x": 800,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "tin",
+              "to": "rs",
+              "label": "consume"
+            },
+            {
+              "from": "rs",
+              "to": "store",
+              "label": "buffer + tri",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed"
+            },
+            {
+              "from": "rs",
+              "to": "tout",
+              "label": "publie dans l'ordre"
+            },
+            {
+              "from": "tout",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-translator",
+      "name": "Message Translator",
+      "category": "message-transformation",
+      "summary": "Convertit le format ou la structure des données entre deux applications.",
+      "problem": "Comment connecter deux systèmes parlant des langages ou schémas différents ?",
+      "solution": "Intercaler un traducteur qui réalise le mapping entre la structure source et cible.",
+      "tags": [
+        "Mapping",
+        "Format",
+        "Converter"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageTranslator.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageTranslator.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le traducteur est un microservice Spring Boot qui consomme le format hérité (ici XML issu d'un adaptateur ERP), le convertit vers le schéma canonique de l'entreprise, l'enregistre/valide auprès du Schema Registry, puis republie l'événement au format cible que tous les systèmes modernes comprennent.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "ext",
+              "type": "external",
+              "label": "Legacy ERP",
+              "sub": "XML / SOAP",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "erp.orders.xml",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "tr",
+              "type": "service",
+              "label": "Order Translator",
+              "sub": "XML → Avro canonique",
+              "x": 520,
+              "y": 100
+            },
+            {
+              "id": "reg",
+              "type": "registry",
+              "label": "Schema Registry",
+              "x": 520,
+              "y": 260
+            },
+            {
+              "id": "tout",
+              "type": "topic",
+              "label": "orders.created",
+              "sub": "Avro",
+              "x": 780,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Order Service",
+              "x": 1020,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "ext",
+              "to": "tin",
+              "label": "publie (adaptateur)"
+            },
+            {
+              "from": "tin",
+              "to": "tr",
+              "label": "consume"
+            },
+            {
+              "from": "tr",
+              "to": "reg",
+              "label": "enregistre / valide",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed",
+              "color": "#0891B2"
+            },
+            {
+              "from": "tr",
+              "to": "tout",
+              "label": "publie format canonique"
+            },
+            {
+              "from": "tout",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "envelope-wrapper",
+      "name": "Envelope Wrapper",
+      "category": "message-transformation",
+      "summary": "Enveloppe des données dans un en-tête d'infrastructure (wrapper).",
+      "problem": "Comment ajouter des métadonnées de transport sans altérer le payload applicatif ?",
+      "solution": "Encapsuler le message d'origine dans un enveloppe contenant les en-têtes requis.",
+      "tags": [
+        "Header",
+        "Encapsulation",
+        "Wrapper"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/EnvelopeWrapper.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/EnvelopeWrapperIcon.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "L'enveloppe est réalisée avec les headers natifs de Kafka (ProducerRecord.headers()), positionnés par un intercepteur Spring Kafka commun à tous les producteurs : le payload métier n'est jamais modifié, seules des métadonnées de transport (corrélation, traçabilité, origine) sont ajoutées, lisibles par l'infrastructure sans désérialiser le message.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Checkout Service",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "w",
+              "type": "service",
+              "label": "Envelope Interceptor",
+              "sub": "ajoute headers : correlationId, traceId",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "checkout.events",
+              "sub": "payload + headers infra",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Fulfillment Service",
+              "sub": "lit les headers sans parser le payload",
+              "x": 820,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "w",
+              "label": "message métier brut"
+            },
+            {
+              "from": "w",
+              "to": "t",
+              "label": "produce (payload+headers)"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "content-enricher",
+      "name": "Content Enricher",
+      "category": "message-transformation",
+      "summary": "Complète un message avec des informations récupérées sur une source externe.",
+      "problem": "Que faire lorsqu'un message entrant manque de données pour être traité ?",
+      "solution": "Interroger un système tiers ou une base de données pour enrichir le payload.",
+      "tags": [
+        "Lookup",
+        "Enrichment",
+        "Database"
+      ],
+      "aliases": [
+        "Enricher"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/DataEnricher.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/DataEnricher.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le service consomme l'événement incomplet, appelle un référentiel externe (API REST ou base) pour récupérer les données manquantes, fusionne le résultat dans le payload, puis republie un message enrichi sur un nouveau topic — le microservice reste stateless, l'état vit uniquement dans le référentiel interrogé.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "customers.created",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "en",
+              "type": "service",
+              "label": "Customer Enricher",
+              "sub": "appel REST si donnée manquante",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "ext",
+              "type": "external",
+              "label": "Referential API",
+              "sub": "REST",
+              "x": 280,
+              "y": 260
+            },
+            {
+              "id": "tout",
+              "type": "topic",
+              "label": "customers.enriched",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "CRM Sync Service",
+              "x": 820,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "tin",
+              "to": "en",
+              "label": "consume"
+            },
+            {
+              "from": "en",
+              "to": "ext",
+              "label": "GET /customers/{id}",
+              "fromSide": "bottom",
+              "toSide": "top"
+            },
+            {
+              "from": "ext",
+              "to": "en",
+              "label": "données manquantes",
+              "fromSide": "top",
+              "toSide": "bottom",
+              "style": "dashed"
+            },
+            {
+              "from": "en",
+              "to": "tout",
+              "label": "publie message enrichi"
+            },
+            {
+              "from": "tout",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "content-filter",
+      "name": "Content Filter",
+      "category": "message-transformation",
+      "summary": "Supprime les données superflues ou confidentielles d'un message.",
+      "problem": "Comment sécuriser ou alléger un message avant de le transmettre à un tiers ?",
+      "solution": "Filtrer les champs inutiles ou sensibles du payload pour ne conserver que l'essentiel.",
+      "tags": [
+        "Privacy",
+        "Security",
+        "Pruning"
+      ],
+      "aliases": [
+        "Filter"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentFilter.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ContentFilter.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Avant d'exposer un flux à un consommateur externe ou partenaire, un microservice dédié republie une version réduite du message sur un topic distinct, en supprimant les champs sensibles ou non pertinents (RGPD, contrats de données) — le topic interne complet n'est jamais accessible en dehors du domaine.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "tin",
+              "type": "topic",
+              "label": "customers.internal",
+              "sub": "payload complet (PII incluse)",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "f",
+              "type": "service",
+              "label": "PII Content Filter",
+              "sub": "retire les champs sensibles",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "tout",
+              "type": "topic",
+              "label": "customers.partner-feed",
+              "sub": "payload réduit, sans PII",
+              "x": 600,
+              "y": 100
+            },
+            {
+              "id": "ext",
+              "type": "external",
+              "label": "Partenaire externe",
+              "x": 880,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "tin",
+              "to": "f",
+              "label": "consume"
+            },
+            {
+              "from": "f",
+              "to": "tout",
+              "label": "publie payload filtré"
+            },
+            {
+              "from": "tout",
+              "to": "ext",
+              "label": "consume (flux exposé)"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "claim-check",
+      "name": "Claim Check",
+      "category": "message-transformation",
+      "summary": "Stocke un payload volumineux hors du bus et ne fait circuler qu'une référence.",
+      "problem": "Comment faire circuler de gros fichiers sans engorger le broker de messages ?",
+      "solution": "Persister le payload dans un store externe et passer un jeton (Claim Check) dans le message.",
+      "tags": [
+        "Large Payload",
+        "Blob Storage",
+        "Reference"
+      ],
+      "aliases": [
+        "Claim Check Pattern"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/StoreInLibrary.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le payload volumineux est écrit dans un stockage objet (S3/MinIO) par le microservice producteur, qui ne publie sur Kafka qu'un message léger contenant la référence (claim check). Les consommateurs récupèrent le fichier directement depuis le stockage objet uniquement s'ils en ont réellement besoin, sans jamais engorger le broker.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Document Service",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "cc",
+              "type": "service",
+              "label": "Claim Check Service",
+              "sub": "publie la référence, pas le fichier",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "obj",
+              "type": "objectstore",
+              "label": "S3 / MinIO Bucket",
+              "x": 280,
+              "y": 260
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "documents.uploaded",
+              "sub": "payload = token",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Document Indexer",
+              "sub": "récupère le fichier si besoin",
+              "x": 820,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "cc",
+              "label": "fichier volumineux"
+            },
+            {
+              "from": "cc",
+              "to": "obj",
+              "label": "stocke le blob",
+              "fromSide": "bottom",
+              "toSide": "top"
+            },
+            {
+              "from": "cc",
+              "to": "t",
+              "label": "publie {claimCheckToken}"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            },
+            {
+              "from": "c",
+              "to": "obj",
+              "label": "GET si nécessaire",
+              "fromSide": "top",
+              "toSide": "bottom",
+              "style": "dashed",
+              "color": "#0D9488"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "polling-consumer",
+      "name": "Polling Consumer",
+      "category": "messaging-endpoints",
+      "summary": "Consommateur qui interroge activement le canal pour vérifier la présence de messages.",
+      "problem": "Comment consommer des messages lorsque le client ne peut pas exposer d'écouteur actif ?",
+      "solution": "Lancer une boucle synchrone (Pull) venant interroger le canal à intervalles réguliers.",
+      "tags": [
+        "Pull",
+        "Scheduled",
+        "Sync"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/PollingConsumer.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/PollingConsumerSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le consommateur n'est pas déclenché par Kafka mais par un déclencheur temporel (@Scheduled Spring), qui va activement interroger un système qui ne sait pas notifier (FTP, base héritée...). Le résultat de ce polling est ensuite publié sur Kafka pour que le reste du système redevienne 100% événementiel en aval.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "sched",
+              "type": "scheduler",
+              "label": "@Scheduled (cron)",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "poll",
+              "type": "service",
+              "label": "Legacy File Poller",
+              "sub": "interroge toutes les 60s",
+              "x": 260,
+              "y": 100
+            },
+            {
+              "id": "ext",
+              "type": "external",
+              "label": "Legacy FTP / Base",
+              "x": 520,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "legacy.files.detected",
+              "x": 780,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "File Processor",
+              "x": 1040,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "sched",
+              "to": "poll",
+              "label": "déclenche",
+              "color": "#D97706"
+            },
+            {
+              "from": "poll",
+              "to": "ext",
+              "label": "poll (pull)"
+            },
+            {
+              "from": "ext",
+              "to": "poll",
+              "label": "résultat",
+              "fromSide": "top",
+              "toSide": "top",
+              "style": "dashed"
+            },
+            {
+              "from": "poll",
+              "to": "t",
+              "label": "publie si nouveauté"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "event-driven-consumer",
+      "name": "Event-Driven Consumer",
+      "category": "messaging-endpoints",
+      "summary": "Consommateur réactif réveillé automatiquement à l'arrivée d'un message.",
+      "problem": "Comment traiter les messages instantanément dès leur disponibilité avec un impact CPU minimal ?",
+      "solution": "Enregistrer un callback/listener (Push) déclenché automatiquement par le broker.",
+      "tags": [
+        "Push",
+        "Reactive",
+        "Listener"
+      ],
+      "aliases": [
+        "Event Driven Consumer",
+        "Listener"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/EventDrivenConsumer.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/EventDrivenConsumerSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le consommateur ne fait aucune boucle active : un @KafkaListener Spring Kafka s'enregistre auprès du broker, qui pousse automatiquement chaque nouveau message dès sa disponibilité. C'est le mode par défaut et recommandé avec Kafka, à l'opposé du Polling Consumer réservé aux systèmes non événementiels.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.created",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Notification Service",
+              "sub": "@KafkaListener — push par le broker",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "ext",
+              "type": "external",
+              "label": "Email Provider",
+              "sub": "API",
+              "x": 560,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "t",
+              "to": "c",
+              "label": "push automatique"
+            },
+            {
+              "from": "c",
+              "to": "ext",
+              "label": "déclenche l'envoi"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "competing-consumers",
+      "name": "Competing Consumers",
+      "category": "messaging-endpoints",
+      "summary": "Multiplie les consommateurs sur un même canal pour répartir la charge.",
+      "problem": "Comment traiter en parallèle un volume élevé de messages arrivant sur une file ?",
+      "solution": "Attacher plusieurs instances de consommateurs concurrents sur la même Queue.",
+      "tags": [
+        "Scaling",
+        "Parallelism",
+        "Queue"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/CompetingConsumers.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/CompetingConsumers.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Trois instances du même microservice Spring Boot partagent le même groupId : Kafka répartit automatiquement les partitions du topic entre elles (rebalancing), chaque partition n'étant lue que par une seule instance à la fois — c'est le mécanisme natif de scaling horizontal d'un consommateur Kafka.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Image Upload Service",
+              "x": 20,
+              "y": 140
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "images.uploaded",
+              "sub": "3 partitions",
+              "x": 260,
+              "y": 140
+            },
+            {
+              "id": "c1",
+              "type": "service",
+              "label": "Thumbnail Worker #1",
+              "sub": "groupId=thumbnail-svc",
+              "x": 520,
+              "y": 20
+            },
+            {
+              "id": "c2",
+              "type": "service",
+              "label": "Thumbnail Worker #2",
+              "sub": "groupId=thumbnail-svc",
+              "x": 520,
+              "y": 140
+            },
+            {
+              "id": "c3",
+              "type": "service",
+              "label": "Thumbnail Worker #3",
+              "sub": "groupId=thumbnail-svc",
+              "x": 520,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "produce"
+            },
+            {
+              "from": "t",
+              "to": "c1",
+              "label": "partition 0"
+            },
+            {
+              "from": "t",
+              "to": "c2",
+              "label": "partition 1"
+            },
+            {
+              "from": "t",
+              "to": "c3",
+              "label": "partition 2"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "idempotent-receiver",
+      "name": "Idempotent Receiver",
+      "category": "messaging-endpoints",
+      "summary": "Gère la réception de doublons sans altérer l'état du système.",
+      "problem": "Comment éviter d'exécuter deux fois la même opération si un message est délivré en double ?",
+      "solution": "Conserver un registre des Message IDs déjà traités pour ignorer les rejeux.",
+      "tags": [
+        "Deduplication",
+        "Exactly-Once",
+        "Safety"
+      ],
+      "aliases": [
+        "Idempotency",
+        "Idempotent Consumer"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/IdempotentReceiver.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Comme Kafka garantit au minimum une livraison (at-least-once), le consommateur vérifie systématiquement dans un registre rapide (Redis, avec expiration) si l'identifiant du message a déjà été traité avant de modifier l'état métier : un message rejoué est détecté et ignoré sans effet de bord.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "payments.events",
+              "sub": "at-least-once",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Payment Processor",
+              "sub": "vérifie messageId avant traitement",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "cache",
+              "type": "cache",
+              "label": "Redis",
+              "sub": "dedup store, TTL 24h",
+              "x": 280,
+              "y": 260
+            },
+            {
+              "id": "store",
+              "type": "store",
+              "label": "PostgreSQL",
+              "sub": "état du paiement",
+              "x": 580,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            },
+            {
+              "from": "c",
+              "to": "cache",
+              "label": "SETNX messageId",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "color": "#EA580C"
+            },
+            {
+              "from": "c",
+              "to": "store",
+              "label": "commit si inédit"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "wire-tap",
+      "name": "Wire Tap",
+      "category": "system-management",
+      "summary": "Détourne une copie d'un message vers un canal secondaire sans perturber le flux principal.",
+      "problem": "Comment auditer, journaliser ou analyser le trafic d'un canal en toute transparence ?",
+      "solution": "Insérer un composant Point d'Écoute qui duplique le message vers un canal d'audit.",
+      "tags": [
+        "Audit",
+        "Monitoring",
+        "Logging"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/WireTap.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/WireTap.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un consommateur additionnel (le Wire Tap), avec son propre groupId, s'abonne au même topic sans interférer avec le flux principal, et republie une copie sur un topic d'audit dédié à des fins de journalisation ou d'observabilité — le service métier principal ignore totalement son existence.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Order Service",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "x": 260,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Fulfillment Service",
+              "x": 500,
+              "y": 100
+            },
+            {
+              "id": "tap",
+              "type": "service",
+              "label": "Wire Tap Interceptor",
+              "sub": "duplique sans bloquer le flux",
+              "x": 260,
+              "y": 260
+            },
+            {
+              "id": "taudit",
+              "type": "topic",
+              "label": "orders.audit",
+              "x": 500,
+              "y": 260
+            },
+            {
+              "id": "audit",
+              "type": "external",
+              "label": "Plateforme d'observabilité",
+              "x": 740,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "produce"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume (flux principal)"
+            },
+            {
+              "from": "t",
+              "to": "tap",
+              "label": "copie asynchrone",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed"
+            },
+            {
+              "from": "tap",
+              "to": "taudit",
+              "label": "publie copie"
+            },
+            {
+              "from": "taudit",
+              "to": "audit",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message",
+      "name": "Message",
+      "category": "message-construction",
+      "summary": "Encapsule une information transmissible dans un en-tête et un corps.",
+      "problem": "Comment transporter une information entre applications via un système de messagerie ?",
+      "solution": "Emballer l'information dans un Message composé d'un header et d'un body transmissibles par un canal.",
+      "tags": [
+        "Header",
+        "Body",
+        "Transport"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Message.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Spring Kafka matérialise le Message par un ProducerRecord : le payload constitue le body et les headers Kafka portent les métadonnées d'intégration comme correlationId, eventType et traceId.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Order Service",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "sub": "payload + Kafka headers",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Billing Service",
+              "sub": "@KafkaListener",
+              "x": 580,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "ProducerRecord"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume Message"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "command-message",
+      "name": "Command Message",
+      "category": "message-construction",
+      "summary": "Exprime une demande explicite d'exécution d'une action.",
+      "problem": "Comment demander à un autre composant d'effectuer une opération sans couplage direct ?",
+      "solution": "Envoyer un message dont le contenu représente une commande à exécuter.",
+      "tags": [
+        "Command",
+        "Intent",
+        "Action"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/CommandMessage.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/CommandMessageSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Une commande est publiée sur un topic dédié avec un contrat explicite, par exemple CreateInvoiceCommand. Le consommateur Spring Boot exécute l'action demandée puis publie éventuellement un événement de résultat sur un autre topic.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Order Service",
+              "sub": "produit Command",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "billing.commands",
+              "sub": "CreateInvoiceCommand",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Billing Service",
+              "sub": "@KafkaListener",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "out",
+              "type": "topic",
+              "label": "invoice.created",
+              "x": 860,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "command"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "execute"
+            },
+            {
+              "from": "c",
+              "to": "out",
+              "label": "event"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "document-message",
+      "name": "Document Message",
+      "category": "message-construction",
+      "summary": "Transporte un document de données complet sans imposer une opération à l'application cible.",
+      "problem": "Comment transmettre un ensemble de données sans imposer au destinataire une action précise ?",
+      "solution": "Publier un document contenant les données nécessaires au consommateur.",
+      "tags": [
+        "Document",
+        "Data",
+        "Payload"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/DocumentMessage.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/DocumentMessageSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le producteur publie un document JSON ou Avro représentant l'état utile, par exemple CustomerSnapshot. Le consommateur décide localement quoi en faire, sans interpréter le message comme une commande impérative.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "CRM Service",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "customer.snapshots",
+              "sub": "CustomerSnapshot",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Analytics Service",
+              "sub": "document consumer",
+              "x": 580,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "publish document"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume snapshot"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "event-message",
+      "name": "Event Message",
+      "category": "message-construction",
+      "summary": "Informe les consommateurs qu'un événement métier s'est produit.",
+      "problem": "Comment notifier plusieurs applications d'un changement sans leur dicter quoi faire ?",
+      "solution": "Publier un événement décrivant un fait accompli, que chaque consommateur peut traiter indépendamment.",
+      "tags": [
+        "Event",
+        "Fact",
+        "EDA"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/EventMessage.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/EventMessageSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Spring Boot publie un événement immuable comme OrderCreated sur un topic partagé. Les consommateurs utilisent des groupId indépendants et décident chacun de leur réaction au fait métier.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Order Service",
+              "sub": "OrderCreated",
+              "x": 20,
+              "y": 140
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "sub": "event stream",
+              "x": 300,
+              "y": 140
+            },
+            {
+              "id": "c1",
+              "type": "service",
+              "label": "Billing Service",
+              "x": 600,
+              "y": 40
+            },
+            {
+              "id": "c2",
+              "type": "service",
+              "label": "Notification Service",
+              "x": 600,
+              "y": 140
+            },
+            {
+              "id": "c3",
+              "type": "service",
+              "label": "Analytics Service",
+              "x": 600,
+              "y": 240
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "publish fact"
+            },
+            {
+              "from": "t",
+              "to": "c1",
+              "label": "group=billing"
+            },
+            {
+              "from": "t",
+              "to": "c2",
+              "label": "group=notification"
+            },
+            {
+              "from": "t",
+              "to": "c3",
+              "label": "group=analytics"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "request-reply",
+      "name": "Request-Reply",
+      "category": "message-construction",
+      "summary": "Associe une requête à une réponse correspondante.",
+      "problem": "Comment obtenir le résultat d'un traitement distant tout en conservant un échange par messages ?",
+      "solution": "Envoyer une requête avec une identité permettant de corréler la réponse attendue.",
+      "tags": [
+        "Request",
+        "Reply",
+        "RPC-like"
+      ],
+      "aliases": [
+        "Request/Reply",
+        "RPC"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/RequestReply.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/RequestReply.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le demandeur publie une requête Kafka avec correlationId et replyTopic. Le service distant traite la requête et publie la réponse sur le topic de retour avec le même correlationId.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Checkout Service",
+              "sub": "request",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "req",
+              "type": "topic",
+              "label": "pricing.requests",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "b",
+              "type": "service",
+              "label": "Pricing Service",
+              "sub": "correlationId",
+              "x": 540,
+              "y": 100
+            },
+            {
+              "id": "rep",
+              "type": "topic",
+              "label": "pricing.replies",
+              "x": 800,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "req",
+              "label": "request"
+            },
+            {
+              "from": "req",
+              "to": "b",
+              "label": "consume"
+            },
+            {
+              "from": "b",
+              "to": "rep",
+              "label": "reply"
+            },
+            {
+              "from": "rep",
+              "to": "a",
+              "label": "correlate",
+              "fromSide": "top",
+              "toSide": "top",
+              "style": "dashed"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "return-address",
+      "name": "Return Address",
+      "category": "message-construction",
+      "summary": "Indique où le destinataire doit envoyer sa réponse.",
+      "problem": "Comment permettre au récepteur de savoir dynamiquement où retourner une réponse ?",
+      "solution": "Inclure dans le message une adresse ou un identifiant de canal de retour.",
+      "tags": [
+        "Reply",
+        "Header",
+        "Dynamic"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ReturnAddress.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ReturnAddressSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le ProducerRecord contient un header replyTopic ou replyTo. Le service Spring Boot lit cette métadonnée et publie la réponse vers le topic indiqué, plutôt que vers une destination codée en dur.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Order API",
+              "sub": "replyTo=orders.replies",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.commands",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Order Processor",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "r",
+              "type": "topic",
+              "label": "orders.replies",
+              "sub": "reply destination",
+              "x": 860,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "message + replyTo"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            },
+            {
+              "from": "c",
+              "to": "r",
+              "label": "publish reply"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "correlation-identifier",
+      "name": "Correlation Identifier",
+      "category": "message-construction",
+      "summary": "Relie plusieurs messages appartenant au même échange.",
+      "problem": "Comment reconnaître la réponse ou les messages qui appartiennent à une même conversation ?",
+      "solution": "Ajouter un identifiant de corrélation commun aux messages liés.",
+      "tags": [
+        "Correlation",
+        "Trace",
+        "Conversation"
+      ],
+      "aliases": [
+        "Correlation ID",
+        "CorrelationId"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/CorrelationIdentifierSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un correlationId est propagé dans les headers Kafka de la requête et de toutes les réponses ou événements dérivés. Les services Spring Boot le conservent dans MDC/OpenTelemetry et les state stores l'utilisent pour regrouper les messages.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Checkout Service",
+              "sub": "correlationId=abc-123",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t1",
+              "type": "topic",
+              "label": "payment.requests",
+              "x": 300,
+              "y": 40
+            },
+            {
+              "id": "t2",
+              "type": "topic",
+              "label": "stock.requests",
+              "x": 300,
+              "y": 180
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Process Manager",
+              "sub": "corr=abc-123",
+              "x": 600,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t1",
+              "label": "corr=abc-123"
+            },
+            {
+              "from": "p",
+              "to": "t2",
+              "label": "corr=abc-123"
+            },
+            {
+              "from": "t1",
+              "to": "c",
+              "label": "correlate"
+            },
+            {
+              "from": "t2",
+              "to": "c",
+              "label": "correlate"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-sequence",
+      "name": "Message Sequence",
+      "category": "message-construction",
+      "summary": "Numérote une série de messages appartenant à une même séquence.",
+      "problem": "Comment identifier l'ordre et les limites d'une série de messages ?",
+      "solution": "Ajouter des métadonnées de séquence comme sequenceId, sequenceNumber et last.",
+      "tags": [
+        "Sequence",
+        "Ordering",
+        "Chunking"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageSequence.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageSequenceSize.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le producteur ajoute sequenceId et sequenceNumber aux headers Kafka. Le consommateur peut ainsi détecter les trous, reconstituer une séquence ou déclencher un Resequencer lorsque l'ordre de transport n'est pas suffisant.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Document Producer",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "documents.parts",
+              "sub": "seqId + seqNo",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "r",
+              "type": "streams",
+              "label": "Sequence Processor",
+              "sub": "seqNo / last",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Document Consumer",
+              "x": 860,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "part 1..N"
+            },
+            {
+              "from": "t",
+              "to": "r",
+              "label": "consume"
+            },
+            {
+              "from": "r",
+              "to": "c",
+              "label": "ordered sequence"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-expiration",
+      "name": "Message Expiration",
+      "category": "message-construction",
+      "summary": "Définit une durée de validité après laquelle un message ne doit plus être traité.",
+      "problem": "Comment empêcher le traitement tardif d'une information devenue obsolète ?",
+      "solution": "Associer au message une échéance et éliminer ou traiter séparément les messages expirés.",
+      "tags": [
+        "TTL",
+        "Expiry",
+        "Freshness"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageExpiration.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageExpirationSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Kafka ne supprime pas un message individuel à son expiration métier ; le consommateur Spring vérifie un header expiresAt avant traitement et redirige les messages périmés vers un topic d'expiration. La rétention Kafka reste une politique distincte.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Offer Service",
+              "sub": "expiresAt",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "offers.events",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Offer Consumer",
+              "sub": "check expiresAt",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "e",
+              "type": "topic",
+              "label": "offers.expired",
+              "x": 860,
+              "y": 200
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "publish + TTL"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            },
+            {
+              "from": "c",
+              "to": "e",
+              "label": "expired",
+              "style": "dashed",
+              "color": "#DC2626",
+              "fromSide": "bottom",
+              "toSide": "top"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "format-indicator",
+      "name": "Format Indicator",
+      "category": "message-construction",
+      "summary": "Indique le format utilisé pour interpréter le contenu d'un message.",
+      "problem": "Comment permettre au consommateur de savoir comment décoder un payload ?",
+      "solution": "Transporter un indicateur de format, de version ou de type avec le message.",
+      "tags": [
+        "Schema",
+        "Content-Type",
+        "Versioning"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/FormatIndicator.html",
+        "diagram": null,
+        "diagramNote": "La page officielle ne fournit actuellement pas d'URL de schéma/image exploitable."
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le producteur renseigne des headers comme contentType=application/avro et schemaVersion=3. Le consommateur choisit le désérialiseur et le contrat correspondant, généralement via Schema Registry.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Producer",
+              "sub": "contentType + schemaVersion",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "events",
+              "sub": "headers format",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "reg",
+              "type": "registry",
+              "label": "Schema Registry",
+              "sub": "version 3",
+              "x": 580,
+              "y": 220
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Consumer",
+              "sub": "deserialize by format",
+              "x": 580,
+              "y": 80
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "format indicator"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "decode"
+            },
+            {
+              "from": "c",
+              "to": "reg",
+              "label": "resolve schema",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed",
+              "color": "#0891B2"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "pipes-and-filters",
+      "name": "Pipes and Filters",
+      "category": "message-routing",
+      "summary": "Compose un traitement complexe en une chaîne de filtres indépendants reliés par des canaux.",
+      "problem": "Comment décomposer un traitement complexe sans créer un composant monolithique ?",
+      "solution": "Relier plusieurs étapes autonomes par des canaux afin que chaque filtre transforme ou traite le message indépendamment.",
+      "tags": [
+        "Pipeline",
+        "Decoupling",
+        "Composition"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/PipesAndFilters.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/PipesAndFilters.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Chaque étape est un microservice Spring Boot ou une Kafka Streams topology indépendante. Les topics intermédiaires matérialisent les pipes, ce qui permet de déployer, scaler et observer chaque filtre séparément.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Ingress",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t1",
+              "type": "topic",
+              "label": "stage.raw",
+              "x": 220,
+              "y": 100
+            },
+            {
+              "id": "f1",
+              "type": "service",
+              "label": "Validate",
+              "x": 420,
+              "y": 100
+            },
+            {
+              "id": "t2",
+              "type": "topic",
+              "label": "stage.valid",
+              "x": 620,
+              "y": 100
+            },
+            {
+              "id": "f2",
+              "type": "service",
+              "label": "Enrich",
+              "x": 820,
+              "y": 100
+            },
+            {
+              "id": "t3",
+              "type": "topic",
+              "label": "stage.ready",
+              "x": 1020,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t1",
+              "label": "produce"
+            },
+            {
+              "from": "t1",
+              "to": "f1",
+              "label": "consume"
+            },
+            {
+              "from": "f1",
+              "to": "t2",
+              "label": "publish"
+            },
+            {
+              "from": "t2",
+              "to": "f2",
+              "label": "consume"
+            },
+            {
+              "from": "f2",
+              "to": "t3",
+              "label": "publish"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "composed-message-processor",
+      "name": "Composed Message Processor",
+      "category": "message-routing",
+      "summary": "Compose plusieurs étapes de routage pour réaliser un traitement logique unique.",
+      "problem": "Comment construire un traitement complexe à partir de plusieurs routeurs sans exposer cette complexité aux applications ?",
+      "solution": "Combiner plusieurs patterns de routage dans un processeur composite qui présente une interface de flux simple.",
+      "tags": [
+        "Composition",
+        "Pipeline",
+        "Router"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ComposedMessageProcessor.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/DistributionAggregate.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un service d'orchestration Spring Boot ou une topology Kafka Streams compose plusieurs étapes de routage internes tout en n'exposant qu'un topic d'entrée et un topic de sortie au reste du SI.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "in",
+              "type": "topic",
+              "label": "orders.in",
+              "x": 20,
+              "y": 120
+            },
+            {
+              "id": "cmp",
+              "type": "service",
+              "label": "Composed Processor",
+              "sub": "router + filter + split",
+              "x": 300,
+              "y": 120
+            },
+            {
+              "id": "a",
+              "type": "topic",
+              "label": "orders.validated",
+              "x": 600,
+              "y": 40
+            },
+            {
+              "id": "b",
+              "type": "topic",
+              "label": "orders.rejected",
+              "x": 600,
+              "y": 200
+            },
+            {
+              "id": "out",
+              "type": "topic",
+              "label": "orders.ready",
+              "x": 860,
+              "y": 120
+            }
+          ],
+          "edges": [
+            {
+              "from": "in",
+              "to": "cmp",
+              "label": "consume"
+            },
+            {
+              "from": "cmp",
+              "to": "a",
+              "label": "valid"
+            },
+            {
+              "from": "cmp",
+              "to": "b",
+              "label": "reject"
+            },
+            {
+              "from": "a",
+              "to": "out",
+              "label": "next stage"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "scatter-gather",
+      "name": "Scatter-Gather",
+      "category": "message-routing",
+      "summary": "Diffuse une requête vers plusieurs destinataires et rassemble leurs réponses.",
+      "problem": "Comment interroger plusieurs services en parallèle puis produire un résultat consolidé ?",
+      "solution": "Scinder la requête vers plusieurs destinataires et agréger leurs réponses corrélées.",
+      "tags": [
+        "Parallel",
+        "Fan-out",
+        "Gather"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/BroadcastAggregate.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/BroadcastAggregate.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un service Spring Boot publie une requête corrélée sur plusieurs topics ou utilise un mécanisme de fan-out. Un Aggregator/Kafka Streams attend les réponses requises et produit une réponse consolidée.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Quote API",
+              "x": 20,
+              "y": 150
+            },
+            {
+              "id": "fan",
+              "type": "service",
+              "label": "Scatter",
+              "sub": "correlationId",
+              "x": 260,
+              "y": 150
+            },
+            {
+              "id": "a",
+              "type": "topic",
+              "label": "quote.stock",
+              "x": 500,
+              "y": 40
+            },
+            {
+              "id": "b",
+              "type": "topic",
+              "label": "quote.shipping",
+              "x": 500,
+              "y": 150
+            },
+            {
+              "id": "c",
+              "type": "topic",
+              "label": "quote.tax",
+              "x": 500,
+              "y": 260
+            },
+            {
+              "id": "g",
+              "type": "streams",
+              "label": "Gather",
+              "sub": "aggregate replies",
+              "x": 760,
+              "y": 150
+            },
+            {
+              "id": "out",
+              "type": "topic",
+              "label": "quote.complete",
+              "x": 1020,
+              "y": 150
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "fan",
+              "label": "request"
+            },
+            {
+              "from": "fan",
+              "to": "a",
+              "label": "scatter"
+            },
+            {
+              "from": "fan",
+              "to": "b",
+              "label": "scatter"
+            },
+            {
+              "from": "fan",
+              "to": "c",
+              "label": "scatter"
+            },
+            {
+              "from": "a",
+              "to": "g",
+              "label": "reply"
+            },
+            {
+              "from": "b",
+              "to": "g",
+              "label": "reply"
+            },
+            {
+              "from": "c",
+              "to": "g",
+              "label": "reply"
+            },
+            {
+              "from": "g",
+              "to": "out",
+              "label": "gather"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "routing-slip",
+      "name": "Routing Slip",
+      "category": "message-routing",
+      "summary": "Transporte dans le message la liste des étapes de routage à exécuter.",
+      "problem": "Comment rendre l'itinéraire d'un message configurable sans coder la séquence dans le routeur ?",
+      "solution": "Ajouter au message une liste ordonnée de destinations ou d'étapes à parcourir.",
+      "tags": [
+        "Route",
+        "Workflow",
+        "Dynamic"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/RoutingSlip.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/RoutingTableSimple.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un header routeSlip contient les étapes restantes, par exemple [validate,enrich,fraud]. Un routeur Spring consomme le message, retire l'étape courante et le republie vers le topic suivant.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Order API",
+              "sub": "routeSlip=[validate,enrich]",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "r",
+              "type": "service",
+              "label": "Routing Slip Processor",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "v",
+              "type": "topic",
+              "label": "validation.in",
+              "x": 560,
+              "y": 40
+            },
+            {
+              "id": "e",
+              "type": "topic",
+              "label": "enrichment.in",
+              "x": 560,
+              "y": 160
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Final Consumer",
+              "x": 820,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "r",
+              "label": "routeSlip"
+            },
+            {
+              "from": "r",
+              "to": "v",
+              "label": "step 1"
+            },
+            {
+              "from": "v",
+              "to": "e",
+              "label": "step 2"
+            },
+            {
+              "from": "e",
+              "to": "c",
+              "label": "complete"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "process-manager",
+      "name": "Process Manager",
+      "category": "message-routing",
+      "summary": "Orchestre une séquence d'activités distribuées et conserve l'état du processus.",
+      "problem": "Comment coordonner plusieurs étapes asynchrones qui constituent un même processus métier ?",
+      "solution": "Introduire un composant central qui conserve l'état et décide de l'étape suivante à chaque événement.",
+      "tags": [
+        "Orchestration",
+        "State",
+        "Saga"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ProcessManager.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un Process Manager Spring Boot persiste l'état de chaque processus par correlationId. Il consomme les événements de paiement, stock et expédition, puis émet la prochaine commande jusqu'à la clôture ou compensation du processus.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "topic",
+              "label": "order.created",
+              "x": 20,
+              "y": 150
+            },
+            {
+              "id": "pm",
+              "type": "service",
+              "label": "Order Process Manager",
+              "sub": "state + correlationId",
+              "x": 280,
+              "y": 150
+            },
+            {
+              "id": "store",
+              "type": "store",
+              "label": "process_state",
+              "sub": "PostgreSQL",
+              "x": 280,
+              "y": 300
+            },
+            {
+              "id": "pay",
+              "type": "topic",
+              "label": "payment.commands",
+              "x": 560,
+              "y": 40
+            },
+            {
+              "id": "stock",
+              "type": "topic",
+              "label": "stock.commands",
+              "x": 560,
+              "y": 150
+            },
+            {
+              "id": "ship",
+              "type": "topic",
+              "label": "shipping.commands",
+              "x": 560,
+              "y": 260
+            },
+            {
+              "id": "done",
+              "type": "topic",
+              "label": "order.completed",
+              "x": 840,
+              "y": 150
+            }
+          ],
+          "edges": [
+            {
+              "from": "start",
+              "to": "pm",
+              "label": "start"
+            },
+            {
+              "from": "pm",
+              "to": "store",
+              "label": "persist state",
+              "fromSide": "bottom",
+              "toSide": "top"
+            },
+            {
+              "from": "pm",
+              "to": "pay",
+              "label": "step 1"
+            },
+            {
+              "from": "pm",
+              "to": "stock",
+              "label": "step 2"
+            },
+            {
+              "from": "pm",
+              "to": "ship",
+              "label": "step 3"
+            },
+            {
+              "from": "pm",
+              "to": "done",
+              "label": "complete"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-broker",
+      "name": "Message Broker",
+      "category": "message-routing",
+      "summary": "Centralise l'intermédiation et le routage entre groupes de systèmes.",
+      "problem": "Comment découpler plusieurs sous-systèmes sans connecter chaque application à toutes les autres ?",
+      "solution": "Introduire un broker qui connaît les destinations et relaie les messages entre sous-systèmes.",
+      "tags": [
+        "Broker",
+        "Hub-and-Spoke",
+        "Decoupling"
+      ],
+      "aliases": [
+        "Broker"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageBroker.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageBroker.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le cluster Kafka joue le rôle de broker : les applications publient vers des topics et le broker assure persistance, distribution et isolation entre producteurs et consommateurs. Pour plusieurs domaines, des topics et ACL séparent les sous-systèmes.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Domain A",
+              "x": 20,
+              "y": 40
+            },
+            {
+              "id": "b",
+              "type": "service",
+              "label": "Domain B",
+              "x": 20,
+              "y": 260
+            },
+            {
+              "id": "hub",
+              "type": "topic",
+              "label": "Kafka Broker",
+              "sub": "cluster / topics / ACL",
+              "x": 380,
+              "y": 150,
+              "w": 220
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Domain C",
+              "x": 760,
+              "y": 40
+            },
+            {
+              "id": "d",
+              "type": "service",
+              "label": "Domain D",
+              "x": 760,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "hub",
+              "label": "publish"
+            },
+            {
+              "from": "b",
+              "to": "hub",
+              "label": "publish"
+            },
+            {
+              "from": "hub",
+              "to": "c",
+              "label": "route"
+            },
+            {
+              "from": "hub",
+              "to": "d",
+              "label": "route"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "normalizer",
+      "name": "Normalizer",
+      "category": "message-transformation",
+      "summary": "Convertit plusieurs représentations d'un même type de message vers un format commun.",
+      "problem": "Comment faire accepter à un consommateur unique des messages équivalents provenant de formats différents ?",
+      "solution": "Créer un normaliseur qui convertit chaque variante vers une représentation canonique.",
+      "tags": [
+        "Normalization",
+        "Formats",
+        "Canonical"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Normalizer.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/Normalizer.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Plusieurs adaptateurs publient leurs formats sur des topics d'entrée distincts. Un service Spring Boot normalise XML, JSON ou CSV vers un événement Avro canonique avant publication sur un topic commun.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "xml",
+              "type": "topic",
+              "label": "erp.xml",
+              "x": 20,
+              "y": 40
+            },
+            {
+              "id": "json",
+              "type": "topic",
+              "label": "crm.json",
+              "x": 20,
+              "y": 160
+            },
+            {
+              "id": "n",
+              "type": "service",
+              "label": "Normalizer",
+              "sub": "XML/JSON → Avro",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "reg",
+              "type": "registry",
+              "label": "Schema Registry",
+              "x": 300,
+              "y": 260
+            },
+            {
+              "id": "out",
+              "type": "topic",
+              "label": "customer.events",
+              "sub": "canonical",
+              "x": 600,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "xml",
+              "to": "n",
+              "label": "consume"
+            },
+            {
+              "from": "json",
+              "to": "n",
+              "label": "consume"
+            },
+            {
+              "from": "n",
+              "to": "reg",
+              "label": "validate",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed",
+              "color": "#0891B2"
+            },
+            {
+              "from": "n",
+              "to": "out",
+              "label": "normalized"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "canonical-data-model",
+      "name": "Canonical Data Model",
+      "category": "message-transformation",
+      "summary": "Définit un modèle de données commun entre plusieurs systèmes intégrés.",
+      "problem": "Comment éviter une multitude de traductions point-à-point entre applications ?",
+      "solution": "Adopter un modèle canonique partagé et traduire chaque système vers et depuis ce modèle.",
+      "tags": [
+        "Canonical",
+        "Schema",
+        "Decoupling"
+      ],
+      "aliases": [
+        "Canonical Model"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/CanonicalDataModel.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/CanonicalDataModel.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le Schema Registry héberge les contrats canoniques Avro/Protobuf. Chaque adaptateur traduit son modèle local vers ce contrat ; les consommateurs n'ont donc pas besoin de connaître les formats des producteurs.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "erp",
+              "type": "external",
+              "label": "ERP",
+              "sub": "XML",
+              "x": 20,
+              "y": 40
+            },
+            {
+              "id": "crm",
+              "type": "external",
+              "label": "CRM",
+              "sub": "JSON",
+              "x": 20,
+              "y": 180
+            },
+            {
+              "id": "ad",
+              "type": "service",
+              "label": "Canonical Adapter",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "reg",
+              "type": "registry",
+              "label": "Schema Registry",
+              "sub": "Canonical Model",
+              "x": 540,
+              "y": 260
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "customer.events",
+              "sub": "canonical Avro",
+              "x": 540,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Consumer Services",
+              "x": 820,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "erp",
+              "to": "ad",
+              "label": "map"
+            },
+            {
+              "from": "crm",
+              "to": "ad",
+              "label": "map"
+            },
+            {
+              "from": "ad",
+              "to": "reg",
+              "label": "validate",
+              "fromSide": "bottom",
+              "toSide": "top",
+              "style": "dashed",
+              "color": "#0891B2"
+            },
+            {
+              "from": "ad",
+              "to": "t",
+              "label": "publish canonical"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-endpoint",
+      "name": "Message Endpoint",
+      "category": "messaging-endpoints",
+      "summary": "Relie une application à un canal de messagerie pour produire ou consommer des messages.",
+      "problem": "Comment connecter une application métier à un canal sans répandre le code de messaging partout ?",
+      "solution": "Encapsuler l'accès au canal dans un endpoint dédié à l'application.",
+      "tags": [
+        "Endpoint",
+        "Adapter",
+        "Integration"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessagingEndpoint.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageEndpoint.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un composant Spring Kafka encapsule les ProducerFactory, KafkaTemplate et @KafkaListener. Le reste du domaine manipule une interface applicative plutôt que l'API Kafka directement.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "app",
+              "type": "service",
+              "label": "Order Domain",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "ep",
+              "type": "service",
+              "label": "Messaging Endpoint",
+              "sub": "KafkaTemplate / Listener",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "x": 620,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "app",
+              "to": "ep",
+              "label": "send domain event"
+            },
+            {
+              "from": "ep",
+              "to": "t",
+              "label": "produce"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "messaging-gateway",
+      "name": "Messaging Gateway",
+      "category": "messaging-endpoints",
+      "summary": "Masque l'API de messaging derrière une interface métier simple.",
+      "problem": "Comment éviter que le code métier dépende directement de l'API du middleware ?",
+      "solution": "Créer une façade métier qui encapsule l'envoi et la réception des messages.",
+      "tags": [
+        "Gateway",
+        "Facade",
+        "Encapsulation"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessagingGateway.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessagingGateway.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Une interface OrderEventGateway expose publishOrderCreated(OrderCreated). Son implémentation Spring utilise KafkaTemplate. Les services métiers restent indépendants de Kafka et peuvent être testés avec un mock de gateway.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "app",
+              "type": "service",
+              "label": "Order Service",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "gw",
+              "type": "service",
+              "label": "OrderEventGateway",
+              "sub": "interface métier",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "x": 620,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "app",
+              "to": "gw",
+              "label": "publishOrderCreated()"
+            },
+            {
+              "from": "gw",
+              "to": "t",
+              "label": "KafkaTemplate.send"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "messaging-mapper",
+      "name": "Messaging Mapper",
+      "category": "messaging-endpoints",
+      "summary": "Sépare les objets métier du modèle de messages échangés.",
+      "problem": "Comment éviter que les classes métier deviennent dépendantes de la structure des messages ?",
+      "solution": "Mapper explicitement les objets du domaine vers des DTO de message et inversement.",
+      "tags": [
+        "Mapping",
+        "DTO",
+        "Domain"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessagingMapper.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessagingMapperClassDiagram.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un mapper Spring convertit Order en OrderCreatedMessage et inversement. Le schéma Kafka peut évoluer sans imposer ses détails aux entités du domaine.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "d",
+              "type": "service",
+              "label": "Domain Model",
+              "sub": "Order",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "m",
+              "type": "service",
+              "label": "Messaging Mapper",
+              "sub": "MapStruct",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "sub": "OrderCreatedMessage",
+              "x": 620,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Consumer DTO",
+              "x": 900,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "d",
+              "to": "m",
+              "label": "map"
+            },
+            {
+              "from": "m",
+              "to": "t",
+              "label": "serialize"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "deserialize"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "transactional-client",
+      "name": "Transactional Client",
+      "category": "messaging-endpoints",
+      "summary": "Coordonne une opération métier et les échanges de messages dans une transaction.",
+      "problem": "Comment éviter un état métier validé sans le message correspondant, ou inversement ?",
+      "solution": "Utiliser une transaction couvrant l'opération métier et la publication/consommation selon les capacités du middleware.",
+      "tags": [
+        "Transaction",
+        "Atomicity",
+        "Consistency"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/TransactionalClient.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/TransactionalClientSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Spring Kafka permet d'utiliser KafkaTransactionManager et @Transactional pour lier traitement et publication Kafka dans une transaction. Pour une base externe, le choix entre transaction distribuée et outbox doit être explicite.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.in",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "svc",
+              "type": "service",
+              "label": "Order Processor",
+              "sub": "@Transactional",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "db",
+              "type": "store",
+              "label": "PostgreSQL",
+              "sub": "transaction",
+              "x": 300,
+              "y": 260
+            },
+            {
+              "id": "out",
+              "type": "topic",
+              "label": "orders.processed",
+              "x": 620,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "t",
+              "to": "svc",
+              "label": "consume"
+            },
+            {
+              "from": "svc",
+              "to": "db",
+              "label": "commit",
+              "fromSide": "bottom",
+              "toSide": "top"
+            },
+            {
+              "from": "svc",
+              "to": "out",
+              "label": "transactional publish"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-dispatcher",
+      "name": "Message Dispatcher",
+      "category": "messaging-endpoints",
+      "summary": "Distribue les messages reçus entre plusieurs gestionnaires de traitement.",
+      "problem": "Comment faire partager un canal à plusieurs handlers tout en centralisant la distribution ?",
+      "solution": "Introduire un dispatcher qui sélectionne le handler approprié pour chaque message.",
+      "tags": [
+        "Dispatch",
+        "Handlers",
+        "Workers"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageDispatcher.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageDispatcher.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un consumer Spring Kafka unique reçoit les messages et les distribue à des handlers internes selon eventType. Cette variante centralise la concurrence et peut appliquer une politique de pool par type de message.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "domain.events",
+              "x": 20,
+              "y": 150
+            },
+            {
+              "id": "d",
+              "type": "service",
+              "label": "Message Dispatcher",
+              "sub": "route par eventType",
+              "x": 300,
+              "y": 150
+            },
+            {
+              "id": "h1",
+              "type": "service",
+              "label": "Payment Handler",
+              "x": 600,
+              "y": 40
+            },
+            {
+              "id": "h2",
+              "type": "service",
+              "label": "Shipping Handler",
+              "x": 600,
+              "y": 150
+            },
+            {
+              "id": "h3",
+              "type": "service",
+              "label": "Notification Handler",
+              "x": 600,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "t",
+              "to": "d",
+              "label": "consume"
+            },
+            {
+              "from": "d",
+              "to": "h1",
+              "label": "PaymentEvent"
+            },
+            {
+              "from": "d",
+              "to": "h2",
+              "label": "ShippingEvent"
+            },
+            {
+              "from": "d",
+              "to": "h3",
+              "label": "NotificationEvent"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "selective-consumer",
+      "name": "Selective Consumer",
+      "category": "messaging-endpoints",
+      "summary": "Ne consomme que les messages correspondant à ses critères.",
+      "problem": "Comment permettre à plusieurs consommateurs de partager un flux sans que chacun traite tous les messages ?",
+      "solution": "Appliquer un prédicat de sélection au niveau du consommateur.",
+      "tags": [
+        "Selection",
+        "Predicate",
+        "Consumer"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/SelectiveConsumer.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageSelectorSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Le consumer Spring utilise un filtre sur eventType, tenant ou autre header. Les messages non sélectionnés sont ignorés/filtrés selon la stratégie retenue, tandis que les messages pertinents sont traités par le service.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Premium Order Consumer",
+              "sub": "predicate: tier=PREMIUM",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "ok",
+              "type": "service",
+              "label": "Premium Handler",
+              "x": 620,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            },
+            {
+              "from": "c",
+              "to": "ok",
+              "label": "only matching"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "durable-subscriber",
+      "name": "Durable Subscriber",
+      "category": "messaging-endpoints",
+      "summary": "Permet à un subscriber de retrouver les messages publiés pendant son indisponibilité.",
+      "problem": "Comment éviter qu'un subscriber hors ligne perde les événements publiés pendant son absence ?",
+      "solution": "Conserver l'identité et l'état du subscriber afin qu'il reprenne à son dernier offset connu.",
+      "tags": [
+        "Durability",
+        "Offset",
+        "Subscriber"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/DurableSubscriber.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/DurableSubscriptionSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Kafka matérialise le subscriber durable par un groupId stable et des offsets conservés. Après une indisponibilité, l'instance reprend depuis le dernier offset committé tant que la rétention du topic le permet.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Event Producer",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "events",
+              "sub": "retention=7d",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Durable Subscriber",
+              "sub": "groupId=reporting",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "store",
+              "type": "store",
+              "label": "Consumer Offset",
+              "x": 580,
+              "y": 250
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "publish"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "resume offset"
+            },
+            {
+              "from": "c",
+              "to": "store",
+              "label": "commit offset",
+              "fromSide": "bottom",
+              "toSide": "top"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "service-activator",
+      "name": "Service Activator",
+      "category": "messaging-endpoints",
+      "summary": "Adapte un message entrant pour déclencher une opération de service synchrone.",
+      "problem": "Comment déclencher une opération métier existante à partir d'un message asynchrone ?",
+      "solution": "Connecter le consumer de messages à une méthode de service qui exécute l'opération métier.",
+      "tags": [
+        "Listener",
+        "Service",
+        "Activation"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ServiceActivator.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessagingAdapterSolution.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un @KafkaListener reçoit le message puis appelle un service métier Spring transactionnel. Le listener constitue l'adaptateur asynchrone, tandis que la logique métier reste indépendante du broker.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.commands",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "l",
+              "type": "service",
+              "label": "@KafkaListener",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "svc",
+              "type": "service",
+              "label": "OrderApplicationService",
+              "sub": "métier",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "db",
+              "type": "store",
+              "label": "PostgreSQL",
+              "x": 580,
+              "y": 250
+            }
+          ],
+          "edges": [
+            {
+              "from": "t",
+              "to": "l",
+              "label": "message"
+            },
+            {
+              "from": "l",
+              "to": "svc",
+              "label": "activate"
+            },
+            {
+              "from": "svc",
+              "to": "db",
+              "label": "persist",
+              "fromSide": "bottom",
+              "toSide": "top"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-channel",
+      "name": "Message Channel",
+      "category": "messaging-channels",
+      "summary": "Fournit le conduit logique par lequel les messages circulent entre applications.",
+      "problem": "Comment relier un producteur et un consommateur sans les coupler directement ?",
+      "solution": "Introduire un canal intermédiaire qui transporte les messages entre les deux applications.",
+      "tags": [
+        "Channel",
+        "Transport",
+        "Decoupling"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageChannel.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageChannel.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un topic Kafka constitue le canal logique. Les producteurs et consommateurs ne connaissent que le nom du topic et son contrat, tandis que le broker gère transport, stockage et livraison.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Producer",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "sub": "Message Channel",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Consumer",
+              "x": 620,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "send"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "receive"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "channel-adapter",
+      "name": "Channel Adapter",
+      "category": "messaging-channels",
+      "summary": "Connecte une application ou un système externe à un canal de messagerie.",
+      "problem": "Comment intégrer un système qui ne parle pas nativement le protocole du middleware ?",
+      "solution": "Placer un adaptateur entre l'interface du système et le canal de messages.",
+      "tags": [
+        "Adapter",
+        "Legacy",
+        "Protocol"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ChannelAdapter.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ChannelAdapter.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un Channel Adapter Spring Boot lit une API, un FTP ou une base legacy et convertit l'entrée en événement Kafka. Dans l'autre sens, il consomme Kafka et appelle l'interface du système externe.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "ext",
+              "type": "external",
+              "label": "Legacy ERP",
+              "sub": "SOAP/XML",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Channel Adapter",
+              "sub": "Spring Integration",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "erp.orders",
+              "x": 620,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Order Services",
+              "x": 900,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "ext",
+              "to": "a",
+              "label": "SOAP"
+            },
+            {
+              "from": "a",
+              "to": "t",
+              "label": "adapt"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "messaging-bridge",
+      "name": "Messaging Bridge",
+      "category": "messaging-channels",
+      "summary": "Relie deux systèmes de messagerie distincts en transférant les messages entre eux.",
+      "problem": "Comment connecter deux domaines de messaging sans fusionner leurs infrastructures ?",
+      "solution": "Introduire un composant bridge qui consomme d'un côté et republie de l'autre.",
+      "tags": [
+        "Bridge",
+        "Replication",
+        "Interconnect"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessagingBridge.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessagingBridge.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un service Spring Boot dédié consomme le cluster source avec un groupId de réplication et republie vers le cluster cible. Les transformations et ACL sont placées explicitement dans le bridge.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "topic",
+              "label": "Kafka Cluster A",
+              "sub": "orders.events",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "b",
+              "type": "service",
+              "label": "Messaging Bridge",
+              "sub": "consume + produce",
+              "x": 340,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "topic",
+              "label": "Kafka Cluster B",
+              "sub": "orders.events",
+              "x": 660,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "b",
+              "label": "consume"
+            },
+            {
+              "from": "b",
+              "to": "c",
+              "label": "republish"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "control-bus",
+      "name": "Control Bus",
+      "category": "system-management",
+      "summary": "Fournit un canal de contrôle pour administrer et superviser les composants de messaging.",
+      "problem": "Comment piloter plusieurs composants distribués sans exposer une interface d'administration spécifique à chacun ?",
+      "solution": "Utiliser un bus de contrôle commun transportant commandes, métriques ou signaux d'administration.",
+      "tags": [
+        "Operations",
+        "Control",
+        "Management"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ControlBus.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ControlBus.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un topic Kafka d'administration transporte des commandes signées comme pauseConsumer, resumeConsumer ou refreshRules. Les services Spring Boot exposent un handler d'administration séparé du flux métier.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "ops",
+              "type": "external",
+              "label": "Operations Console",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "bus",
+              "type": "topic",
+              "label": "control.bus",
+              "sub": "admin commands",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "s1",
+              "type": "service",
+              "label": "Order Service",
+              "x": 600,
+              "y": 40
+            },
+            {
+              "id": "s2",
+              "type": "service",
+              "label": "Billing Service",
+              "x": 600,
+              "y": 160
+            }
+          ],
+          "edges": [
+            {
+              "from": "ops",
+              "to": "bus",
+              "label": "command"
+            },
+            {
+              "from": "bus",
+              "to": "s1",
+              "label": "control"
+            },
+            {
+              "from": "bus",
+              "to": "s2",
+              "label": "control"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "detour",
+      "name": "Detour",
+      "category": "system-management",
+      "summary": "Introduit temporairement un détour dans le flux normal pour une opération spéciale.",
+      "problem": "Comment appliquer une étape additionnelle sans réécrire le flux principal ?",
+      "solution": "Ajouter un routeur ou chemin alternatif activable qui détourne temporairement les messages.",
+      "tags": [
+        "Routing",
+        "Maintenance",
+        "Temporary"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Detour.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/Detour.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un routeur Spring lit une configuration de maintenance et redirige temporairement le flux vers un topic de validation ou de quarantaine avant de reprendre le chemin normal.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "in",
+              "type": "topic",
+              "label": "orders.in",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "r",
+              "type": "service",
+              "label": "Detour Router",
+              "sub": "feature flag",
+              "x": 280,
+              "y": 100
+            },
+            {
+              "id": "main",
+              "type": "topic",
+              "label": "orders.normal",
+              "x": 560,
+              "y": 40
+            },
+            {
+              "id": "det",
+              "type": "topic",
+              "label": "orders.detour",
+              "x": 560,
+              "y": 180
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Order Processor",
+              "x": 840,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "in",
+              "to": "r",
+              "label": "consume"
+            },
+            {
+              "from": "r",
+              "to": "main",
+              "label": "normal"
+            },
+            {
+              "from": "r",
+              "to": "det",
+              "label": "maintenance",
+              "style": "dashed"
+            },
+            {
+              "from": "main",
+              "to": "c",
+              "label": "consume"
+            },
+            {
+              "from": "det",
+              "to": "c",
+              "label": "resume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-history",
+      "name": "Message History",
+      "category": "system-management",
+      "summary": "Enregistre les étapes traversées par un message au cours de son traitement.",
+      "problem": "Comment diagnostiquer le parcours d'un message dans une architecture distribuée ?",
+      "solution": "Ajouter ou stocker une trace des composants traversés et des étapes de traitement.",
+      "tags": [
+        "Trace",
+        "Audit",
+        "Observability"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageHistory.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageHistory.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Chaque service Spring ajoute son nom dans un header ou un contexte de trace, par exemple messageHistory=[gateway,router,billing]. En pratique, cette information peut être complétée par OpenTelemetry pour une trace distribuée externe au payload.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Gateway",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "sub": "history=[gateway]",
+              "x": 260,
+              "y": 100
+            },
+            {
+              "id": "r",
+              "type": "service",
+              "label": "Router",
+              "sub": "append history",
+              "x": 520,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Billing",
+              "sub": "history=[gateway,router,billing]",
+              "x": 800,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "p",
+              "to": "t",
+              "label": "history=1"
+            },
+            {
+              "from": "t",
+              "to": "r",
+              "label": "consume"
+            },
+            {
+              "from": "r",
+              "to": "c",
+              "label": "history=3"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "message-store",
+      "name": "Message Store",
+      "category": "system-management",
+      "summary": "Conserve des messages pour inspection, rejeu, audit ou récupération.",
+      "problem": "Comment conserver certains messages au-delà du traitement courant ?",
+      "solution": "Persister les messages dans un stockage dédié auquel les opérateurs ou processus peuvent accéder ultérieurement.",
+      "tags": [
+        "Persistence",
+        "Replay",
+        "Audit"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageStore.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageStore.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Kafka fournit déjà une rétention de messages, mais un Message Store dédié peut persister une copie normalisée dans PostgreSQL ou un object store pour audit et rejeu métier contrôlé.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "orders.events",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "tap",
+              "type": "service",
+              "label": "Message Store Writer",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "db",
+              "type": "store",
+              "label": "message_store",
+              "sub": "PostgreSQL / S3",
+              "x": 580,
+              "y": 220
+            },
+            {
+              "id": "ops",
+              "type": "external",
+              "label": "Replay Console",
+              "x": 860,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "t",
+              "to": "tap",
+              "label": "consume copy"
+            },
+            {
+              "from": "tap",
+              "to": "db",
+              "label": "persist",
+              "fromSide": "bottom",
+              "toSide": "top"
+            },
+            {
+              "from": "db",
+              "to": "ops",
+              "label": "inspect / replay",
+              "style": "dashed"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "smart-proxy",
+      "name": "Smart Proxy",
+      "category": "system-management",
+      "summary": "Intercepte et adapte les échanges entre un demandeur et un destinataire sans modifier les deux extrémités.",
+      "problem": "Comment ajouter une fonction d'intégration entre deux systèmes que l'on ne peut pas modifier ?",
+      "solution": "Intercaler un proxy capable de lire, modifier ou enrichir les messages tout en conservant l'interface attendue.",
+      "tags": [
+        "Proxy",
+        "Interception",
+        "Adaptation"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/SmartProxy.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/SmartProxy.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un service Spring Boot agit comme proxy entre un producteur et un système externe : il ajoute authentification, mapping, correlationId ou règles d'accès sans imposer ces préoccupations aux deux applications.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Order Client",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "p",
+              "type": "service",
+              "label": "Smart Proxy",
+              "sub": "auth + mapping",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "partner.commands",
+              "x": 620,
+              "y": 100
+            },
+            {
+              "id": "ext",
+              "type": "external",
+              "label": "Partner System",
+              "x": 900,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "p",
+              "label": "request"
+            },
+            {
+              "from": "p",
+              "to": "t",
+              "label": "adapt"
+            },
+            {
+              "from": "t",
+              "to": "ext",
+              "label": "deliver"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "test-message",
+      "name": "Test Message",
+      "category": "system-management",
+      "summary": "Injecte un message de test pour vérifier le fonctionnement d'un canal ou d'une chaîne.",
+      "problem": "Comment vérifier en production qu'une chaîne de messaging fonctionne de bout en bout ?",
+      "solution": "Envoyer périodiquement un message synthétique et vérifier son arrivée à la destination attendue.",
+      "tags": [
+        "Testing",
+        "Synthetic",
+        "Healthcheck"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/TestMessage.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/TestMessage.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un scheduler Spring publie un message synthétique avec un tenant ou eventType réservé au monitoring. Le consumer de test valide le parcours et expose une métrique de latence sans polluer les données métier.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "s",
+              "type": "scheduler",
+              "label": "Synthetic Probe",
+              "sub": "@Scheduled",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "health.events",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "Test Consumer",
+              "sub": "ack + latency",
+              "x": 580,
+              "y": 100
+            },
+            {
+              "id": "mon",
+              "type": "external",
+              "label": "Monitoring",
+              "x": 860,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "s",
+              "to": "t",
+              "label": "test message"
+            },
+            {
+              "from": "t",
+              "to": "c",
+              "label": "consume"
+            },
+            {
+              "from": "c",
+              "to": "mon",
+              "label": "metric"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "channel-purger",
+      "name": "Channel Purger",
+      "category": "system-management",
+      "summary": "Supprime les messages d'un canal lorsqu'une opération d'administration l'exige.",
+      "problem": "Comment vider un canal avant une opération de maintenance ou un changement de contexte ?",
+      "solution": "Fournir une opération administrative permettant de purger les messages selon une politique contrôlée.",
+      "tags": [
+        "Operations",
+        "Purge",
+        "Maintenance"
+      ],
+      "aliases": [],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ChannelPurger.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ChannelPurger.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Pour Kafka, une purge peut être réalisée en contrôlant les offsets ou en supprimant/recréant un topic selon la politique d'exploitation. Le service d'administration Spring Boot doit protéger cette opération et journaliser son exécution.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "ops",
+              "type": "external",
+              "label": "Admin Console",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "svc",
+              "type": "service",
+              "label": "Purge Controller",
+              "sub": "RBAC + audit",
+              "x": 300,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "temporary.events",
+              "sub": "purge target",
+              "x": 600,
+              "y": 100
+            },
+            {
+              "id": "audit",
+              "type": "store",
+              "label": "Audit Log",
+              "x": 600,
+              "y": 240
+            }
+          ],
+          "edges": [
+            {
+              "from": "ops",
+              "to": "svc",
+              "label": "purge"
+            },
+            {
+              "from": "svc",
+              "to": "t",
+              "label": "reset/delete",
+              "style": "dashed",
+              "color": "#DC2626"
+            },
+            {
+              "from": "svc",
+              "to": "audit",
+              "label": "record action",
+              "fromSide": "bottom",
+              "toSide": "top"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "file-transfer",
+      "name": "File Transfer",
+      "category": "integration-styles",
+      "summary": "Intègre des applications par échange de fichiers partagés.",
+      "problem": "Comment partager des données avec des applications qui ne disposent pas d'une interface de messaging commune ?",
+      "solution": "Chaque application produit et consomme des fichiers dans un emplacement partagé ou transféré.",
+      "tags": [
+        "File",
+        "Batch",
+        "Integration Style"
+      ],
+      "aliases": [
+        "File Transfer Integration"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/FileTransferIntegration.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/FileTransferIntegration.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un job Spring Batch ou un poller dépose un fichier dans un object store ou SFTP, puis un Channel Adapter transforme chaque fichier en événements Kafka pour le reste du SI.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Source Application",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "f",
+              "type": "objectstore",
+              "label": "SFTP / S3",
+              "sub": "shared file",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "p",
+              "type": "service",
+              "label": "File Adapter",
+              "x": 600,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "files.detected",
+              "x": 880,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "f",
+              "label": "write file"
+            },
+            {
+              "from": "f",
+              "to": "p",
+              "label": "poll"
+            },
+            {
+              "from": "p",
+              "to": "t",
+              "label": "publish event"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "shared-database",
+      "name": "Shared Database",
+      "category": "integration-styles",
+      "summary": "Intègre des applications via une base de données commune.",
+      "problem": "Comment partager des données entre applications sans construire un canal de communication dédié ?",
+      "solution": "Faire lire et écrire aux applications dans une base partagée selon un contrat commun.",
+      "tags": [
+        "Database",
+        "Shared State",
+        "Integration Style"
+      ],
+      "aliases": [
+        "Shared Data",
+        "Shared Data Model"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/SharedDataBaseIntegration.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/SharedDatabaseIntegration.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Plusieurs services Spring accèdent à un schéma partagé. Pour limiter le couplage, une table d'outbox ou des vues contractuelles peuvent être utilisées, puis un CDC peut publier les changements vers Kafka.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Order Service",
+              "x": 20,
+              "y": 40
+            },
+            {
+              "id": "db",
+              "type": "store",
+              "label": "Shared Database",
+              "sub": "PostgreSQL",
+              "x": 340,
+              "y": 150
+            },
+            {
+              "id": "b",
+              "type": "service",
+              "label": "Reporting Service",
+              "x": 700,
+              "y": 40
+            },
+            {
+              "id": "c",
+              "type": "service",
+              "label": "CDC / Kafka Connect",
+              "x": 700,
+              "y": 260
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "db.changes",
+              "x": 980,
+              "y": 260
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "db",
+              "label": "write",
+              "fromSide": "bottom",
+              "toSide": "top"
+            },
+            {
+              "from": "db",
+              "to": "b",
+              "label": "read",
+              "fromSide": "top",
+              "toSide": "bottom"
+            },
+            {
+              "from": "db",
+              "to": "c",
+              "label": "CDC",
+              "fromSide": "right",
+              "toSide": "left"
+            },
+            {
+              "from": "c",
+              "to": "t",
+              "label": "publish"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "remote-procedure-invocation",
+      "name": "Remote Procedure Invocation",
+      "category": "integration-styles",
+      "summary": "Intègre des applications en exposant et appelant des opérations distantes.",
+      "problem": "Comment faire exécuter une fonctionnalité d'une autre application comme une opération distante ?",
+      "solution": "Exposer une procédure distante et permettre aux autres applications de l'invoquer via un protocole convenu.",
+      "tags": [
+        "RPC",
+        "Synchronous",
+        "Integration Style"
+      ],
+      "aliases": [
+        "RPI",
+        "RPC"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/EncapsulatedSynchronousIntegration.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/EncapsulatedSynchronousIntegration.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Un service Spring expose une API REST/gRPC et un client appelle directement la procédure distante. Ce style est volontairement distinct de Kafka : la réponse fait partie de l'appel synchrone.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Order API",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "rpc",
+              "type": "external",
+              "label": "REST / gRPC",
+              "sub": "remote call",
+              "x": 320,
+              "y": 100
+            },
+            {
+              "id": "b",
+              "type": "service",
+              "label": "Pricing Service",
+              "x": 620,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "rpc",
+              "label": "request"
+            },
+            {
+              "from": "rpc",
+              "to": "b",
+              "label": "invoke"
+            },
+            {
+              "from": "b",
+              "to": "rpc",
+              "label": "response",
+              "fromSide": "bottom",
+              "toSide": "bottom",
+              "style": "dashed"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    },
+    {
+      "id": "messaging",
+      "name": "Messaging",
+      "category": "integration-styles",
+      "summary": "Intègre des applications par échange asynchrone de messages via un système de messagerie.",
+      "problem": "Comment faire collaborer des applications hétérogènes tout en limitant leur couplage temporel et technologique ?",
+      "solution": "Utiliser un système de messagerie pour transporter des données et des demandes de manière asynchrone.",
+      "tags": [
+        "Messaging",
+        "Asynchronous",
+        "Integration Style"
+      ],
+      "aliases": [
+        "Messaging Integration"
+      ],
+      "official": {
+        "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/Messaging.html",
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/Messaging.gif"
+      },
+      "technical": {
+        "stack": [
+          "Kafka",
+          "Spring Boot",
+          "Spring Kafka"
+        ],
+        "description": "Kafka constitue le système de messagerie commun : les applications publient et consomment des messages, ce qui permet de découpler leur disponibilité et de faire évoluer les consommateurs indépendamment des producteurs.",
+        "diagram": {
+          "nodes": [
+            {
+              "id": "a",
+              "type": "service",
+              "label": "Application A",
+              "x": 20,
+              "y": 100
+            },
+            {
+              "id": "t",
+              "type": "topic",
+              "label": "Kafka Messaging",
+              "sub": "durable async channel",
+              "x": 340,
+              "y": 100
+            },
+            {
+              "id": "b",
+              "type": "service",
+              "label": "Application B",
+              "x": 700,
+              "y": 100
+            }
+          ],
+          "edges": [
+            {
+              "from": "a",
+              "to": "t",
+              "label": "publish"
+            },
+            {
+              "from": "t",
+              "to": "b",
+              "label": "consume"
+            }
+          ]
+        }
+      },
+      "relatedPatterns": []
+    }
+  ]
+}
