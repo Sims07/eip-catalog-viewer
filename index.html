@@ -71,6 +71,37 @@
     </div>
   </footer>
 
+  <!-- Modal pour l'implémentation technique -->
+<div id="techModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+    
+    <!-- Header de la Modal -->
+    <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+      <div>
+        <span class="text-xs font-mono font-bold text-brand-500 uppercase tracking-wider">Implémentation Technique</span>
+        <h2 id="modalTitle" class="text-xl font-bold text-slate-100"></h2>
+      </div>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-white text-2xl font-bold px-2 py-1 transition">&times;</button>
+    </div>
+
+    <!-- Corps de la Modal -->
+    <div class="p-6 overflow-y-auto space-y-4">
+      <p id="modalDescription" class="text-sm text-slate-600 leading-relaxed"></p>
+      
+      <!-- Zone Diagramme SVG grand format -->
+      <div id="modalDiagram" class="bg-slate-900 rounded-xl p-6 overflow-x-auto min-h-[300px] flex items-center justify-center shadow-inner border border-slate-800">
+        <!-- SVG injecté dynamiquement -->
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+      <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition">
+        Fermer
+      </button>
+    </div>
+  </div>
+</div>
   <script src="app.js"></script>
 </body>
 </html>
