@@ -4707,7 +4707,7 @@
       "aliases": [],
       "official": {
         "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageChannel.html",
-        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageChannel.gif"
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/MessageChannelSolution.gif"
       },
       "technical": {
         "stack": [
@@ -4772,7 +4772,7 @@
       "aliases": [],
       "official": {
         "url": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/ChannelAdapter.html",
-        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ChannelAdapter.gif"
+        "diagram": "https://www.enterpriseintegrationpatterns.com/img/ChannelAdapterSolution.gif"
       },
       "technical": {
         "stack": [
