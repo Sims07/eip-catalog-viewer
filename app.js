@@ -126,7 +126,7 @@ function renderArchDiagram(spec) {
       </g>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${maxX} ${maxY}" class="w-full h-auto">
+  return `<svg viewBox="0 0 ${maxX} ${maxY}" class="tech-architecture-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Schéma d'architecture technique">
     <defs>
       <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#94A3B8"/>
@@ -819,6 +819,21 @@ const searchInput = document.getElementById('searchInput');
 const categoryFilters = document.getElementById('categoryFilters');
 const patternsGrid = document.getElementById('patternsGrid');
 
+const techModal = document.getElementById('techModal');
+const modalTitle = document.getElementById('modalTitle');
+const modalCategory = document.getElementById('modalCategory');
+const modalSummary = document.getElementById('modalSummary');
+const modalProblem = document.getElementById('modalProblem');
+const modalSolution = document.getElementById('modalSolution');
+const modalTags = document.getElementById('modalTags');
+const modalDescription = document.getElementById('modalDescription');
+const modalDiagram = document.getElementById('modalDiagram');
+const modalOfficialImage = document.getElementById('modalOfficialImage');
+const modalOfficialLink = document.getElementById('modalOfficialLink');
+const modalCopyButton = document.getElementById('modalCopyButton');
+
+let activeModalPatternId = null;
+
 function initFilters() {
   const categories = ['All', ...new Set(patternsData.map(p => p.category))];
   
@@ -846,11 +861,14 @@ function initFilters() {
 
 function renderPatterns() {
   const filtered = patternsData.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(currentSearch.toLowerCase()) ||
-                          p.summary.toLowerCase().includes(currentSearch.toLowerCase()) ||
-                          p.problem.toLowerCase().includes(currentSearch.toLowerCase()) ||
-                          p.tags.some(t => t.toLowerCase().includes(currentSearch.toLowerCase()));
-    
+    const search = currentSearch.toLowerCase();
+
+    const matchesSearch =
+      p.name.toLowerCase().includes(search) ||
+      p.summary.toLowerCase().includes(search) ||
+      p.problem.toLowerCase().includes(search) ||
+      p.tags.some(t => t.toLowerCase().includes(search));
+
     const matchesCategory = currentCategory === 'All' || p.category === currentCategory;
     return matchesSearch && matchesCategory;
   });
@@ -872,9 +890,9 @@ function renderPatterns() {
         <div>
           <!-- Visuel EIP sur fond blanc propre -->
           <div class="bg-white p-4 flex items-center justify-center border-b border-slate-100 min-h-[150px] relative">
-            <img 
-              src="${imageUrl}" 
-              alt="Schéma ${pattern.name}" 
+            <img
+              src="${imageUrl}"
+              alt="Schéma ${pattern.name}"
               class="max-h-28 object-contain"
               loading="lazy"
             />
@@ -895,6 +913,7 @@ function renderPatterns() {
                 <span class="font-bold text-slate-900 block mb-0.5">Problème</span>
                 <p class="text-slate-600 leading-relaxed">${pattern.problem}</p>
               </div>
+
               <div class="bg-slate-50 border-l-2 border-emerald-500 p-3 rounded-r-md">
                 <span class="font-bold text-slate-900 block mb-0.5">Solution</span>
                 <p class="text-slate-600 leading-relaxed">${pattern.solution}</p>
@@ -907,13 +926,15 @@ function renderPatterns() {
           <!-- Tags -->
           <div class="flex flex-wrap gap-1.5 mb-4">
             ${pattern.tags.map(tag => `
-              <span class="text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded border border-slate-200">#${tag}</span>
+              <span class="text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded border border-slate-200">
+                #${tag}
+              </span>
             `).join('')}
           </div>
 
           <!-- Actions bas de carte -->
           <div class="flex items-center justify-between border-t border-slate-100 pt-3 gap-2 text-xs">
-            <button 
+            <button
               onclick="copyMarkdown('${pattern.id}')"
               id="copy-btn-${pattern.id}"
               class="font-semibold text-slate-600 hover:text-brand-800 transition flex items-center gap-1"
@@ -921,9 +942,9 @@ function renderPatterns() {
               📋 Copier MD
             </button>
 
-            <a 
-              href="${pattern.officialUrl}" 
-              target="_blank" 
+            <a
+              href="${pattern.officialUrl}"
+              target="_blank"
               rel="noopener noreferrer"
               class="font-bold text-brand-800 hover:text-brand-900 hover:underline flex items-center gap-1"
             >
@@ -932,22 +953,29 @@ function renderPatterns() {
           </div>
 
           ${pattern.techImplementation ? `
-          <!-- Implémentation technique (repliable) -->
+          <!-- Accès à la fiche technique plein écran -->
           <div class="mt-3 pt-3 border-t border-slate-100">
             <button
-              onclick="toggleImplementation('${pattern.id}')"
-              id="impl-btn-${pattern.id}"
-              class="w-full flex items-center justify-between text-[11px] font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 transition"
+              type="button"
+              onclick="openTechModal('${pattern.id}')"
+              class="tech-open-button w-full flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:border-brand-500 hover:bg-brand-50"
             >
-              <span>🏗️ Voir l'implémentation technique (Kafka + Spring Boot)</span>
-              <span class="chevron text-slate-400 transition-transform">▼</span>
+              <span class="flex items-center gap-2">
+                <span class="text-sm">⚙️</span>
+                <span>
+                  <span class="block text-[11px] font-bold text-slate-700">
+                    Voir l'implémentation technique
+                  </span>
+                  <span class="block mt-0.5 text-[10px] text-slate-400">
+                    Kafka + Spring Boot
+                  </span>
+                </span>
+              </span>
+
+              <span class="text-brand-800 text-sm font-bold" aria-hidden="true">
+                →
+              </span>
             </button>
-            <div id="impl-${pattern.id}" class="hidden mt-3">
-              <p class="text-xs text-slate-600 leading-relaxed mb-3">${pattern.techImplementation.description}</p>
-              <div class="bg-slate-900 rounded-lg p-3 overflow-x-auto">
-                ${renderArchDiagram(pattern.techImplementation)}
-              </div>
-            </div>
           </div>
           ` : ''}
         </div>
@@ -956,13 +984,91 @@ function renderPatterns() {
   }).join('');
 }
 
-function toggleImplementation(patternId) {
-  const panel = document.getElementById(`impl-${patternId}`);
-  const btn = document.getElementById(`impl-btn-${patternId}`);
-  const isHidden = panel.classList.contains('hidden');
-  panel.classList.toggle('hidden');
-  btn.querySelector('.chevron').textContent = isHidden ? '▲' : '▼';
+function openTechModal(patternId) {
+  const pattern = patternsData.find(p => p.id === patternId);
+
+  if (!pattern || !pattern.techImplementation || !techModal) {
+    return;
+  }
+
+  activeModalPatternId = patternId;
+
+  modalTitle.textContent = pattern.name;
+  modalCategory.textContent = pattern.category;
+  modalSummary.textContent = pattern.summary;
+  modalProblem.textContent = pattern.problem;
+  modalSolution.textContent = pattern.solution;
+
+  modalTags.innerHTML = pattern.tags.map(tag => `
+    <span class="text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-1 rounded border border-slate-200">
+      #${tag}
+    </span>
+  `).join('');
+
+  modalDescription.textContent = pattern.techImplementation.description;
+  modalDiagram.innerHTML = renderArchDiagram(pattern.techImplementation);
+
+  const imageUrl = officialImages[pattern.id] || '';
+
+  if (imageUrl) {
+    modalOfficialImage.innerHTML = `
+      <img src="${imageUrl}" alt="Schéma ${pattern.name}" class="max-h-[260px] max-w-full object-contain md:max-h-[320px]" onerror="this.onerror=null; this.parentElement.innerHTML=getFallbackSVG();" />
+    `;
+  } else {
+    modalOfficialImage.innerHTML = getFallbackSVG();
+  }
+
+  modalOfficialLink.href = pattern.officialUrl;
+  modalCopyButton.onclick = () => copyMarkdownFromModal(patternId);
+
+  // Popup statique : aucune animation, aucun clone, aucun déplacement de la carte.
+  techModal.classList.remove('hidden');
+  document.body.classList.add('tech-scroll-locked');
+
+  techModal.querySelector('button[aria-label="Fermer"]')?.focus();
 }
+
+function closeModal() {
+  if (!techModal) {
+    return;
+  }
+
+  techModal.classList.add('hidden');
+  document.body.classList.remove('tech-scroll-locked');
+  activeModalPatternId = null;
+}
+
+function copyMarkdownFromModal(patternId) {
+  const pattern = patternsData.find(p => p.id === patternId);
+  if (!pattern) return;
+
+  const imageUrl = officialImages[pattern.id] || '';
+  const md = `### Pattern EIP : ${pattern.name}\n\n![${pattern.name}](${imageUrl})\n\n**Problème :** ${pattern.problem}\n\n**Solution :** ${pattern.solution}\n\n*Source : [Enterprise Integration Patterns](${pattern.officialUrl})*`;
+
+  navigator.clipboard.writeText(md).then(() => {
+    const originalText = modalCopyButton.innerHTML;
+
+    modalCopyButton.innerHTML = '✅ Copié !';
+    modalCopyButton.classList.add('text-green-600', 'border-green-200');
+
+    setTimeout(() => {
+      modalCopyButton.innerHTML = originalText;
+      modalCopyButton.classList.remove('text-green-600', 'border-green-200');
+    }, 2000);
+  });
+}
+
+techModal?.addEventListener('click', (event) => {
+  if (event.target === techModal) {
+    closeModal();
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && techModal && !techModal.classList.contains('hidden')) {
+    closeModal();
+  }
+});
 
 function copyMarkdown(patternId) {
   const pattern = patternsData.find(p => p.id === patternId);

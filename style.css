@@ -1,12 +1,279 @@
+/* =========================================================
+   Category filters
+   ========================================================= */
+
 #categoryFilters::-webkit-scrollbar {
   display: none;
 }
+
 #categoryFilters {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* Ajustement pour centrer les diagrammes Mermaid SVG */
+
+/* =========================================================
+   Technical modal — popup statique
+   ========================================================= */
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body.tech-scroll-locked {
+  overflow: hidden;
+}
+
+.tech-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.58);
+  opacity: 1;
+  transform: none;
+  transition: none !important;
+  animation: none !important;
+}
+
+.tech-modal.hidden {
+  display: none !important;
+}
+
+.tech-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.58);
+  opacity: 1;
+  transition: none !important;
+  animation: none !important;
+}
+
+.tech-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(1120px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  background: #fff;
+  border: 2px solid #334155;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.38);
+  opacity: 1;
+  transform: none;
+  transition: none !important;
+  animation: none !important;
+}
+
+.tech-modal-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 14px;
+}
+
+.tech-modal-opening,
+.tech-modal.tech-modal-closing {
+  opacity: 1;
+  transform: none;
+  transition: none !important;
+  animation: none !important;
+}
+
+.tech-modal-opening .tech-modal-panel,
+.tech-modal.tech-modal-closing .tech-modal-panel {
+  opacity: 1;
+  transform: none;
+  transition: none !important;
+  animation: none !important;
+}
+
+.tech-modal-opening .tech-modal-backdrop,
+.tech-modal.tech-modal-closing .tech-modal-backdrop {
+  opacity: 1;
+  transition: none !important;
+  animation: none !important;
+}
+
+.tech-modal-panel > header,
+.tech-modal-panel > div {
+  animation: none !important;
+}
+
+.tech-card-active,
+.tech-card-transition-source,
+.tech-card-transition-clone,
+.tech-shared-card,
+.tech-shared-card-moving,
+.tech-card-transition-expanded {
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+@media (max-width: 640px) {
+  .tech-modal { padding: 12px; }
+  .tech-modal-panel { width: calc(100vw - 24px); max-height: calc(100vh - 24px); border-radius: 12px; }
+}
+
+/* =========================================================
+   Technical modal CTA
+   ========================================================= */
+
+.tech-open-button {
+  min-height: 52px;
+}
+
+.tech-open-button:hover {
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   Technical diagram
+   ========================================================= */
+
+.tech-diagram-container {
+  width: 100%;
+  min-height: 420px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(30, 41, 59, 0.95),
+      rgba(15, 23, 42, 1)
+    );
+
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 40px rgba(0, 0, 0, 0.2);
+}
+
+.tech-architecture-svg {
+  display: block;
+  width: 100%;
+  min-width: 520px;
+  max-width: 1100px;
+  height: auto;
+  max-height: 650px;
+  margin: auto;
+}
+
+
+/* =========================================================
+   Problem / solution blocks in modal
+   ========================================================= */
+
+.modal-info-block {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.modal-info-problem {
+  border-left: 3px solid #f59e0b;
+}
+
+.modal-info-solution {
+  border-left: 3px solid #10b981;
+}
+
+
+/* =========================================================
+   Responsive modal
+   ========================================================= */
+
+@media (max-width: 767px) {
+  .tech-modal-panel {
+    border-radius: 0;
+  }
+
+  .tech-diagram-container {
+    min-height: 300px;
+    padding: 12px;
+  }
+
+  .tech-architecture-svg {
+    min-width: 600px;
+  }
+}
+
+
+/* =========================================================
+   Animations
+   ========================================================= */
+
+@keyframes techModalFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes techModalBackdropIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes techModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* =========================================================
+   Reduced motion
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .tech-modal,
+  .tech-modal-panel,
+  .tech-modal-backdrop {
+    animation: none;
+  }
+
+  .tech-open-button:hover {
+    transform: none;
+  }
+}
+
+
+/* =========================================================
+   Existing Mermaid support
+   ========================================================= */
+
 .mermaid svg {
   max-height: 140px;
   width: auto !important;
