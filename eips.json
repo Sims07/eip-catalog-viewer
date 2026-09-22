@@ -245,7 +245,13 @@
           "description": "Retries, Dead Letter Channel et idempotence sont à réimplémenter dans chaque groupe. Les abonnés traitent le même événement à des instants différents : la cohérence entre eux n'est qu'éventuelle, sans transaction distribuée."
         }
       ],
-      "relatedPatterns": []
+      "relatedPatterns": [],
+      "seeAlso": [
+        {
+          "title": "Event Notification vs Event-Carried State Transfer",
+          "url": "concepts/event-notification-vs-ecst.html"
+        }
+      ]
     },
     {
       "id": "datatype-channel",
@@ -3298,7 +3304,13 @@
           "description": "Trop fins, les événements multiplient le trafic et les dépendances ; trop épais, ils exposent des détails internes et deviennent des documents déguisés."
         }
       ],
-      "relatedPatterns": []
+      "relatedPatterns": [],
+      "seeAlso": [
+        {
+          "title": "Event Notification vs Event-Carried State Transfer",
+          "url": "concepts/event-notification-vs-ecst.html"
+        }
+      ]
     },
     {
       "id": "request-reply",

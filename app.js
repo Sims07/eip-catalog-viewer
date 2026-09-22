@@ -118,6 +118,7 @@ function normalizePattern(pattern, categoriesById) {
     category: category ? category.name : pattern.category,
     officialUrl: pattern.official?.url || '',
     negativeEffects: Array.isArray(pattern.negativeEffects) ? pattern.negativeEffects : [],
+    seeAlso: Array.isArray(pattern.seeAlso) ? pattern.seeAlso : [],
     techImplementation: pattern.technical
       ? {
           description: pattern.technical.description || '',
@@ -195,6 +196,8 @@ const modalTags = document.getElementById('modalTags');
 const modalDescription = document.getElementById('modalDescription');
 const modalNegativeSection = document.getElementById('modalNegativeSection');
 const modalNegativeEffects = document.getElementById('modalNegativeEffects');
+const modalSeeAlsoSection = document.getElementById('modalSeeAlsoSection');
+const modalSeeAlsoLinks = document.getElementById('modalSeeAlsoLinks');
 const modalDiagram = document.getElementById('modalDiagram');
 const modalOfficialImage = document.getElementById('modalOfficialImage');
 const modalOfficialLink = document.getElementById('modalOfficialLink');
@@ -394,6 +397,30 @@ function renderNegativeEffects(effects) {
   modalNegativeSection.classList.remove('hidden');
 }
 
+// Affiche l'encart « Voir aussi » (liens vers des pages de concepts transverses) ;
+// masqué tant qu'un pattern n'en déclare aucun.
+function renderSeeAlso(links) {
+  if (!modalSeeAlsoSection || !modalSeeAlsoLinks) return;
+
+  if (!links || links.length === 0) {
+    modalSeeAlsoSection.classList.add('hidden');
+    modalSeeAlsoLinks.innerHTML = '';
+    return;
+  }
+
+  modalSeeAlsoLinks.innerHTML = links.map(link => `
+    <a
+      href="${escapeHtml(link.url)}"
+      class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-800"
+    >
+      <span class="text-brand-800">⇄</span>
+      ${escapeHtml(link.title)}
+    </a>
+  `).join('');
+
+  modalSeeAlsoSection.classList.remove('hidden');
+}
+
 function openTechModal(patternId) {
   const pattern = patternsData.find(p => p.id === patternId);
 
@@ -417,6 +444,7 @@ function openTechModal(patternId) {
 
   modalDescription.textContent = pattern.techImplementation.description;
   renderNegativeEffects(pattern.negativeEffects);
+  renderSeeAlso(pattern.seeAlso);
   modalDiagram.innerHTML = renderArchDiagram(pattern.techImplementation);
 
   const imageUrl = pattern.official?.diagram || '';
