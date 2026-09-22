@@ -6,7 +6,7 @@
     "source": "Enterprise Integration Patterns",
     "sourceUrl": "https://www.enterpriseintegrationpatterns.com/patterns/messaging/index.html",
     "license": "CC BY (see official site)",
-    "lastUpdated": "2026-09-11"
+    "lastUpdated": "2026-09-21"
   },
   "categories": [
     {
@@ -113,6 +113,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Parallélisme plafonné par le nombre de partitions",
+          "description": "Au sein d'un groupe, une partition n'est lue que par une seule instance : le nombre de partitions fixe le nombre maximal de consommateurs actifs. Le sous-dimensionner bride le débit, et l'augmenter plus tard modifie la répartition des clés."
+        },
+        {
+          "title": "Ordre garanti seulement par clé",
+          "description": "L'ordre n'existe qu'à l'intérieur d'une partition. Sans clé de partitionnement adaptée, deux messages d'une même entité métier peuvent être traités dans le désordre par deux instances."
+        },
+        {
+          "title": "Message bloquant qui gèle une partition",
+          "description": "Un message qui échoue systématiquement empêche la lecture de tous ceux qui le suivent dans la partition, tant qu'aucune stratégie de retry limité ou de Dead Letter Channel n'est en place."
+        },
+        {
+          "title": "Consommation « une seule fois » non garantie",
+          "description": "Après un rebalancing ou un crash avant commit d'offset, un message peut être relivré à une autre instance. La sémantique « un seul récepteur » n'est donc respectée qu'au prix d'un consommateur idempotent."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -209,6 +227,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couplage caché par le contrat d'événement",
+          "description": "L'émetteur ne connaît pas ses abonnés : modifier le schéma ou la sémantique d'un événement peut casser des consommateurs que personne n'a recensés. Il faut gouverner les contrats (Schema Registry, règles de compatibilité) et tenir un inventaire des abonnés."
+        },
+        {
+          "title": "Ordre garanti uniquement par partition",
+          "description": "Kafka n'assure l'ordre qu'à l'intérieur d'une partition. Les abonnés qui ont besoin d'un ordre métier doivent s'appuyer sur une clé de partitionnement pertinente ; il n'existe aucun ordre global entre topics ni entre partitions."
+        },
+        {
+          "title": "Abonné lent = lag et risque de perte",
+          "description": "Chaque groupe avance à son rythme. Un abonné en retard accumule du lag et, si la rétention du topic expire avant qu'il ait rattrapé, il perd définitivement des messages. La supervision du lag par groupe devient indispensable."
+        },
+        {
+          "title": "Erreurs et cohérence gérées abonné par abonné",
+          "description": "Retries, Dead Letter Channel et idempotence sont à réimplémenter dans chaque groupe. Les abonnés traitent le même événement à des instants différents : la cohérence entre eux n'est qu'éventuelle, sans transaction distribuée."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -329,6 +365,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Prolifération des topics",
+          "description": "Un topic par type de message multiplie les topics, les partitions et les ACL à gérer. Cela pèse sur le cluster (métadonnées, fichiers ouverts) et sur la lisibilité de la cartographie des flux."
+        },
+        {
+          "title": "Ordre perdu entre types liés",
+          "description": "Des événements d'une même entité répartis sur plusieurs topics n'ont plus d'ordre relatif garanti. Les consommateurs qui les combinent doivent gérer eux-mêmes les arrivées dans le désordre."
+        },
+        {
+          "title": "Évolution de schéma sous contrainte",
+          "description": "Le typage fort via le Schema Registry impose des règles de compatibilité : un changement cassant oblige à créer un nouveau topic ou à versionner, et à faire cohabiter deux formats le temps de la migration."
+        },
+        {
+          "title": "Rigidité pour les flux hétérogènes",
+          "description": "Un consommateur qui s'intéresse à plusieurs types doit s'abonner à plusieurs topics et fusionner les flux. Le découpage par type ne correspond pas toujours aux besoins d'un cas d'usage transverse."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -432,6 +486,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Étape de validation supplémentaire sur le chemin critique",
+          "description": "Le service de validation ajoute un saut de topic, une latence et un composant à dimensionner et à superviser. S'il tombe en panne, tout le flux amont est bloqué."
+        },
+        {
+          "title": "Messages invalides sans traitement associé",
+          "description": "Le canal ne sert à rien si personne ne l'exploite : sans alerte, tableau de bord ni processus de correction et de rejeu, les messages invalides s'accumulent et les données correspondantes sont perdues côté métier."
+        },
+        {
+          "title": "Règles de validation dupliquées et désynchronisées",
+          "description": "Le validateur peut diverger des règles réelles des consommateurs : un message jugé valide peut échouer plus loin, un message rejeté à tort peut être écarté alors qu'il aurait été traité."
+        },
+        {
+          "title": "Risque de fuite de données dans le topic d'invalides",
+          "description": "Un message malformé conserve son contenu, parfois sensible. Le topic des invalides doit hériter de la même politique d'accès, de rétention et de chiffrement que le topic d'origine."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -519,6 +591,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Un DLT non supervisé devient un cimetière",
+          "description": "Sans alerte, tableau de bord ni responsable identifié, les messages en échec s'accumulent sans jamais être rejoués. Les erreurs sont alors masquées plutôt que traitées."
+        },
+        {
+          "title": "Ordre et cohérence rompus par le contournement",
+          "description": "Un message écarté vers le DLT n'est plus dans le flux : ceux qui le suivent sont traités sans lui. Un rejeu ultérieur arrive dans le désordre et peut violer des dépendances entre événements d'une même entité."
+        },
+        {
+          "title": "Retries qui masquent les pannes et créent de la latence",
+          "description": "Un nombre élevé de tentatives avec backoff retarde la lecture de la partition. Une indisponibilité temporaire d'une dépendance peut envoyer à tort des messages sains vers le DLT."
+        },
+        {
+          "title": "Rejeu risqué sans idempotence",
+          "description": "Rejouer un message issu du DLT peut provoquer des doublons d'effets de bord si le consommateur n'est pas idempotent. Il faut aussi conserver assez de contexte (exception, offset d'origine, headers) pour diagnostiquer."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -601,6 +691,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Latence et débit dégradés",
+          "description": "acks=all et la réplication synchrone obligent le producteur à attendre la confirmation de plusieurs brokers. Chaque message coûte plus cher en latence, et l'idempotence ajoute un léger surcoût."
+        },
+        {
+          "title": "Coût d'infrastructure multiplié",
+          "description": "Avec replication.factor≥3, le stockage, le réseau inter-brokers et le nombre de brokers augmentent. La durabilité a un coût direct en ressources."
+        },
+        {
+          "title": "At-least-once implique des doublons",
+          "description": "Le commit d'offset après traitement garantit qu'aucun message n'est perdu, mais un crash entre traitement et commit provoque une relivraison. Les consommateurs doivent être idempotents."
+        },
+        {
+          "title": "Disponibilité sacrifiée en cas de panne",
+          "description": "Avec min.insync.replicas élevé, l'écriture est refusée dès que trop peu de réplicas sont disponibles. La garantie de ne rien perdre se paie par une perte de disponibilité en écriture."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -712,6 +820,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Point de dépendance central",
+          "description": "Toutes les applications reposent sur le même cluster et le même Schema Registry. Une panne, une mauvaise configuration ou une saturation impacte l'ensemble du système d'information."
+        },
+        {
+          "title": "Modèle canonique difficile à gouverner",
+          "description": "Imposer un format commun nécessite une gouvernance forte. Chaque évolution devient une négociation entre équipes, et le modèle tend soit à se figer, soit à devenir un dénominateur commun trop pauvre."
+        },
+        {
+          "title": "Adaptateurs à construire et maintenir",
+          "description": "Chaque système legacy demande un adaptateur dédié à développer, tester, superviser et faire évoluer, ce qui représente une charge importante et une source de dette."
+        },
+        {
+          "title": "Couplage organisationnel et effet « plateforme »",
+          "description": "L'équipe qui exploite le bus devient un goulet d'étranglement : quotas, ACL, création de topics et versions du Schema Registry doivent être arbitrés pour tout le monde."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -824,6 +950,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Le routeur devient un composant central à faire évoluer",
+          "description": "Toute nouvelle destination ou règle passe par lui. Sans gouvernance, il concentre la connaissance de la topologie et devient un goulet d'étranglement organisationnel."
+        },
+        {
+          "title": "Dépendance à des headers posés en amont",
+          "description": "Le routage repose sur un header technique que les producteurs doivent renseigner correctement. Un header absent ou erroné envoie le message au mauvais endroit, sans que le routeur puisse le détecter par le contenu."
+        },
+        {
+          "title": "Latence et débit ajoutés",
+          "description": "Chaque message fait un saut supplémentaire (lecture puis republication), avec une consommation accrue en réseau et en stockage sur le cluster."
+        },
+        {
+          "title": "Traçabilité et cas non routables",
+          "description": "Il faut définir le comportement pour un message sans destination (rejet, canal par défaut, DLT). Sans cela, il est perdu silencieusement et le parcours d'un message devient difficile à reconstituer."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -963,6 +1107,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couplage du routeur au schéma métier",
+          "description": "Le routeur désérialise et inspecte le payload : tout changement de champ ou de valeur du contenu impose de faire évoluer le routeur en même temps que les producteurs."
+        },
+        {
+          "title": "Règles de routage qui s'accumulent",
+          "description": "Avec le temps, les conditions se multiplient et deviennent difficiles à lire, tester et maintenir. La logique métier s'infiltre dans un composant censé rester technique."
+        },
+        {
+          "title": "Ordre non garanti entre les topics de sortie",
+          "description": "Les messages d'une même entité peuvent partir vers différents topics selon leur contenu. Aucun ordre relatif n'est garanti entre eux, et un consommateur unique de plusieurs sorties doit le gérer."
+        },
+        {
+          "title": "Coût de désérialisation et cas sans règle",
+          "description": "Analyser chaque message consomme du CPU et de la latence. Il faut aussi prévoir le traitement d'un contenu qui ne correspond à aucune règle (topic par défaut ou DLT)."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1052,6 +1214,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Perte silencieuse de messages",
+          "description": "Les messages rejetés ne sont écrits nulle part : une règle trop stricte ou erronée fait disparaître des données sans trace, ni possibilité de rejeu ni d'audit."
+        },
+        {
+          "title": "Prédicat difficile à faire évoluer",
+          "description": "Le critère de filtrage encode une règle métier dans un composant technique. Une mise à jour mal coordonnée avec les consommateurs modifie discrètement ce qu'ils reçoivent."
+        },
+        {
+          "title": "Débogage et supervision complexes",
+          "description": "Un consommateur qui ne reçoit pas un message attendu peut chercher longtemps si celui-ci a été filtré, sauf à exposer des métriques de messages rejetés par règle."
+        },
+        {
+          "title": "Latence et saut de topic supplémentaires",
+          "description": "Le filtre lit et réécrit les messages conservés : il double le volume transitant sur le cluster alors qu'un filtrage côté consommateur (ou Kafka Streams) éviterait ce saut."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1157,6 +1337,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Table de règles = nouveau point de défaillance",
+          "description": "Le routeur dépend de Postgres à chaque message. Indisponibilité ou lenteur de la base, et le flux est bloqué ou route de façon incorrecte, sauf à mettre en cache les règles."
+        },
+        {
+          "title": "Cohérence et fraîcheur des règles",
+          "description": "Avec un cache, une règle modifiée n'est pas appliquée immédiatement, et plusieurs instances peuvent voir des versions différentes. Sans cache, chaque message coûte une requête."
+        },
+        {
+          "title": "Comportement moins prévisible et moins testable",
+          "description": "Le comportement dépend de données modifiables à chaud, sans déploiement. Reproduire un incident exige de connaître l'état des règles à un instant donné, d'où le besoin d'historisation et d'audit."
+        },
+        {
+          "title": "Risque d'erreur de configuration à impact immédiat",
+          "description": "Une mauvaise ligne en base redirige immédiatement le trafic en production, sans passer par le cycle de revue et de tests d'un déploiement de code."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1274,6 +1472,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Publication multiple non atomique",
+          "description": "Publier sur plusieurs topics n'est pas transactionnel par défaut : un échec en cours de route livre le message à certains destinataires seulement et laisse le système dans un état incohérent."
+        },
+        {
+          "title": "Amplification de charge",
+          "description": "Un message entrant génère autant de messages sortants que de destinataires. Une liste très longue augmente fortement le volume écrit et la charge sur le cluster."
+        },
+        {
+          "title": "Table de souscriptions à gouverner",
+          "description": "La liste des destinataires est calculée à partir d'une table externe : elle doit rester à jour, sa modification est sensible, et elle devient un point de dépendance à chaque événement."
+        },
+        {
+          "title": "Couplage du producteur avec les destinataires",
+          "description": "Contrairement au Publish-Subscribe, l'émetteur (ou le routeur) connaît les destinataires. Ajouter ou retirer un consommateur suppose de modifier la table et non de simplement s'abonner."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1365,6 +1581,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Explosion du volume de messages",
+          "description": "Un message composite devient N messages, ce qui multiplie les écritures et la charge sur Kafka et sur les consommateurs. Un lot de taille imprévue peut saturer un topic."
+        },
+        {
+          "title": "Perte du contexte transactionnel",
+          "description": "Ce qui était traité comme un tout est désormais traité élément par élément : un échec partiel laisse un ensemble à moitié traité, sans rollback naturel."
+        },
+        {
+          "title": "Dépendance à un Correlation ID et à un Aggregator",
+          "description": "Reconstituer le résultat global suppose un identifiant commun et souvent un Aggregator, avec toute la complexité d'état et de fenêtre associée."
+        },
+        {
+          "title": "Ordre non garanti entre les éléments",
+          "description": "Selon la clé de partitionnement, les sous-messages sont traités en parallèle et dans le désordre, ce qui pose problème si leur ordre a une signification métier."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1459,6 +1693,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "État à gérer et à restaurer",
+          "description": "Le state store (RocksDB) consomme disque et mémoire, et il est répliqué dans un changelog topic. Après un crash ou un rebalancing, la restauration de l'état peut prendre du temps pendant lequel l'agrégation est indisponible pour les partitions concernées."
+        },
+        {
+          "title": "Complétude incertaine : fenêtre et messages tardifs",
+          "description": "Il faut arbitrer entre une fenêtre courte (agrégats incomplets, latence faible) et une fenêtre longue (latence et état accru). Les messages qui arrivent après la fermeture de la fenêtre doivent être ignorés, rejetés ou traités par un circuit de rattrapage."
+        },
+        {
+          "title": "Contrainte de co-partitionnement",
+          "description": "Tous les messages partageant un même Correlation ID doivent atterrir dans la même partition. Cela impose la clé de partitionnement côté producteurs et expose à un déséquilibre de charge (hot partition) si la distribution des identifiants est inégale."
+        },
+        {
+          "title": "Complexité opérationnelle et doublons",
+          "description": "Kafka Streams ajoute une couche à opérer, tester et diagnostiquer (topologie, rebalancing, état local). En at-least-once, un agrégat peut être émis plusieurs fois : il faut soit rendre le consommateur idempotent, soit accepter le surcoût de l'exactly-once."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1553,6 +1805,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Latence liée à l'attente des messages manquants",
+          "description": "Le resequencer bloque les messages suivants tant qu'un numéro de séquence n'est pas arrivé. Un message perdu ou très en retard peut retarder tout le flux."
+        },
+        {
+          "title": "Mémoire et état à gérer",
+          "description": "Le tampon dans le state store grossit avec le désordre observé. Il faut le borner (taille, fenêtre) et prévoir sa restauration après un crash ou un rebalancing."
+        },
+        {
+          "title": "Décision de timeout délicate",
+          "description": "Il faut choisir quand abandonner l'attente d'un message manquant, puis décider du sort des messages arrivant après coup (rejet, émission hors ordre, DLT)."
+        },
+        {
+          "title": "Contrainte de partitionnement",
+          "description": "Tous les messages d'une même séquence doivent arriver dans la même partition, donc sur la même instance : cela limite le parallélisme et expose à des partitions surchargées."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1660,6 +1930,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Composant supplémentaire et latence ajoutée",
+          "description": "Chaque traduction est un saut de topic avec désérialisation et resérialisation. Le traducteur est un service de plus à déployer, superviser et dimensionner."
+        },
+        {
+          "title": "Perte ou déformation d'information",
+          "description": "Le passage vers le schéma canonique peut écarter des champs propres au système source, ou les interpréter de façon approximative, avec des pertes difficiles à détecter."
+        },
+        {
+          "title": "Multiplication des traducteurs",
+          "description": "Avec le nombre de systèmes, le nombre de traducteurs croît. Chaque changement de format source ou du modèle canonique impacte toutes les traductions concernées."
+        },
+        {
+          "title": "Logique de mapping difficile à tester",
+          "description": "Les règles de conversion (formats de dates, référentiels, valeurs par défaut) sont nombreuses et implicites. Sans jeux de tests exhaustifs, les régressions passent inaperçues."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1739,6 +2027,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Headers Kafka à taille et lisibilité limitées",
+          "description": "Les headers sont de simples paires clé/valeur en octets, sans schéma. Les surcharger alourdit chaque message et ils échappent à la validation du Schema Registry."
+        },
+        {
+          "title": "Convention à faire respecter partout",
+          "description": "Le mécanisme n'est efficace que si tous les producteurs utilisent l'intercepteur commun. Un producteur oublié envoie des messages sans corrélation ni traçabilité."
+        },
+        {
+          "title": "Couplage à une bibliothèque commune",
+          "description": "L'intercepteur partagé crée une dépendance de tous les services vis-à-vis d'une même bibliothèque : chaque évolution demande une montée de version coordonnée."
+        },
+        {
+          "title": "Risque de fuite de métadonnées",
+          "description": "Les headers circulent avec le message, y compris vers des consommateurs externes. Y placer des informations sensibles (identifiants internes, utilisateur) est un risque de confidentialité."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1841,6 +2147,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Dépendance à une source externe",
+          "description": "L'enrichissement appelle un référentiel à chaque message : sa lenteur ou son indisponibilité ralentit ou bloque tout le flux, et le débit est limité par cette source."
+        },
+        {
+          "title": "Couplage temporel et donnée potentiellement périmée",
+          "description": "La donnée est ajoutée au moment du traitement : rejouer plus tard produit un message différent de l'original. Un cache pour aller plus vite peut renvoyer des valeurs obsolètes."
+        },
+        {
+          "title": "Duplication de données dans les messages",
+          "description": "Le message enrichi embarque une copie de données qui vivent ailleurs. Elle grossit le payload et peut diverger de la source de vérité."
+        },
+        {
+          "title": "Échec partiel à gérer",
+          "description": "Si le référentiel ne connaît pas l'objet ou répond en erreur, il faut décider : réessayer, publier sans enrichir, ou envoyer en DLT, avec l'impact correspondant sur les consommateurs."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -1922,6 +2246,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Perte définitive d'information pour le consommateur",
+          "description": "Ce qui est retiré du message n'est plus disponible pour lui. Un besoin ultérieur oblige à modifier le filtre et à republier, voire à rejouer l'historique."
+        },
+        {
+          "title": "Duplication des flux et coût associé",
+          "description": "Une version réduite est republiée sur un topic distinct : le volume stocké et transporté augmente, et il faut maintenir deux flux cohérents entre eux."
+        },
+        {
+          "title": "Risque de fuite si le filtre est mal configuré",
+          "description": "Une liste de champs oubliée ou un nouveau champ sensible ajouté au schéma source peut être exposé automatiquement si le filtre fonctionne par exclusion plutôt que par liste blanche."
+        },
+        {
+          "title": "Composant de conformité à auditer",
+          "description": "Comme il porte l'exigence RGPD et les contrats de données, le filtre doit être testé, versionné et audité. Il constitue une preuve de conformité et un risque en cas de défaillance."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2026,6 +2368,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Nouveau point de défaillance sur le chemin critique",
+          "description": "Le stockage objet (S3/MinIO) devient indispensable au traitement : s'il est indisponible ou lent, les consommateurs reçoivent la référence mais ne peuvent pas récupérer le contenu, même si Kafka fonctionne parfaitement."
+        },
+        {
+          "title": "Pas d'atomicité entre le stockage et Kafka",
+          "description": "L'écriture du payload et la publication de la référence sont deux opérations distinctes. Un échec entre les deux laisse des fichiers orphelins ou, dans l'autre sens, des messages pointant vers un contenu inexistant. Il faut ordonner les écritures et prévoir un nettoyage."
+        },
+        {
+          "title": "Cycle de vie des payloads à piloter",
+          "description": "Personne ne supprime automatiquement le contenu lorsque le message expire. Sans politique de rétention alignée sur celle du topic, on paie du stockage inutile ; à l'inverse, un replay de topic peut référencer des fichiers déjà purgés."
+        },
+        {
+          "title": "Message non autosuffisant : latence, sécurité, audit",
+          "description": "Lire le contenu ajoute un aller-retour réseau. Les droits d'accès et le chiffrement du bucket doivent être gérés séparément de ceux du broker, et l'inspection, le rejeu ou l'audit d'un message ne suffisent plus à eux seuls pour reconstituer son contenu."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2124,6 +2484,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Latence liée à l'intervalle de polling",
+          "description": "Les données ne sont détectées qu'au prochain passage du @Scheduled : le délai est borné par la fréquence, et l'augmenter pour réduire la latence charge le système source."
+        },
+        {
+          "title": "Charge inutile sur la source",
+          "description": "Chaque interrogation coûte même quand il n'y a rien de nouveau. Sur un FTP ou une base héritée, un polling trop fréquent peut dégrader ses performances."
+        },
+        {
+          "title": "Doublons et pertes de données à gérer",
+          "description": "Sans mécanisme fiable pour mémoriser ce qui a déjà été lu (curseur, marqueur, fichier déplacé), un redémarrage ou un chevauchement d'exécutions provoque des doublons ou des oublis."
+        },
+        {
+          "title": "Exécution multiple à coordonner",
+          "description": "Avec plusieurs instances du service, chacune déclenche son propre @Scheduled : il faut un verrou ou un leader (par exemple ShedLock) pour éviter les lectures concurrentes."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2193,6 +2571,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Pas de vrai push : le listener reste une boucle de poll",
+          "description": "Le @KafkaListener repose en réalité sur une boucle de poll côté client. Un traitement trop long dépasse max.poll.interval.ms et déclenche un rebalancing du groupe."
+        },
+        {
+          "title": "Retard (lag) qui s'accumule si le traitement est lent",
+          "description": "Le consommateur lit à son rythme : si le traitement est plus lent que l'arrivée des messages, le retard grandit sans erreur visible. Il faut dimensionner les instances et surveiller le lag par groupe."
+        },
+        {
+          "title": "Gestion des erreurs à concevoir",
+          "description": "Un message qui échoue peut bloquer la partition ou provoquer des relivraisons. Retries, Dead Letter Channel et idempotence doivent être configurés explicitement."
+        },
+        {
+          "title": "Concurrence et ordre à maîtriser",
+          "description": "Augmenter la concurrence du listener parallélise les partitions mais pas les messages d'une même partition. Le traitement multi-thread manuel peut casser l'ordre et le commit d'offset."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2285,6 +2681,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Rebalancing coûteux",
+          "description": "Chaque ajout, retrait ou crash d'instance redistribue les partitions. Pendant ce temps, la consommation est suspendue ou perturbée, et des messages peuvent être relus ou traités deux fois."
+        },
+        {
+          "title": "Scaling plafonné par les partitions",
+          "description": "Ajouter des instances au-delà du nombre de partitions ne sert à rien : les instances excédentaires restent inactives. Le dimensionnement doit donc être anticipé à la création du topic."
+        },
+        {
+          "title": "Ordre non garanti entre partitions",
+          "description": "Le parallélisme se fait entre partitions, pas au sein d'une partition. Les messages d'une même entité doivent partager la même clé, sinon leur ordre de traitement est aléatoire."
+        },
+        {
+          "title": "Charge inégale entre instances",
+          "description": "Une clé très fréquente (hot key) sature la partition, donc l'instance qui la lit, pendant que les autres restent sous-utilisées. Le scaling horizontal n'y change rien."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2371,6 +2785,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Nouvelle dépendance sur le chemin critique",
+          "description": "Chaque message nécessite un appel au registre (Redis). Sa lenteur ou son indisponibilité ralentit ou bloque le traitement, et il faut décider du comportement en cas de panne."
+        },
+        {
+          "title": "Fenêtre d'expiration = garantie limitée",
+          "description": "Le registre expire ses identifiants : un doublon arrivant après l'expiration est traité comme un nouveau message. La durée de rétention doit être alignée sur le délai maximal de relivraison."
+        },
+        {
+          "title": "Course entre vérification et traitement",
+          "description": "Vérifier, traiter puis enregistrer n'est pas atomique : un crash entre les étapes provoque soit un doublon, soit un message considéré traité alors qu'il ne l'a pas été. Il faut un enregistrement atomique ou transactionnel."
+        },
+        {
+          "title": "Coût de stockage et d'exploitation",
+          "description": "Le registre stocke un identifiant par message traité. Son volume, sa mémoire et sa cohérence en cas de perte de Redis sont à dimensionner et à surveiller."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2475,6 +2907,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Charge et volume supplémentaires",
+          "description": "Le Wire Tap relit et republie chaque message : lecture additionnelle sur le cluster et doublement du volume écrit sur le topic d'audit."
+        },
+        {
+          "title": "Fuite potentielle de données sensibles",
+          "description": "La copie d'audit contient tout le payload. Si le topic d'audit n'a pas les mêmes contrôles d'accès, de chiffrement et de rétention que la source, il devient un point d'exfiltration."
+        },
+        {
+          "title": "Copie non synchronisée avec le traitement réel",
+          "description": "Le tap voit le message tel que publié, pas tel que traité : il ne dit rien du succès ou de l'échec du consommateur. Il ne remplace pas un vrai suivi de bout en bout."
+        },
+        {
+          "title": "Retard et perte éventuels de l'observation",
+          "description": "Le tap a son propre groupe : s'il prend du retard ou s'arrête, l'audit devient incomplet sans que le flux principal ne le signale."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2541,6 +2991,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Format et contrat à maintenir",
+          "description": "Le message devient un contrat entre équipes. Le faire évoluer (nouveaux champs, renommages) sans casser les consommateurs demande des règles de compatibilité et de la coordination."
+        },
+        {
+          "title": "Taille limitée et coût de transport",
+          "description": "Les messages volumineux dégradent le débit et sont plafonnés par la configuration Kafka (message.max.bytes). Au-delà, il faut passer par un Claim Check."
+        },
+        {
+          "title": "Métadonnées non standardisées",
+          "description": "Les headers (correlationId, eventType, traceId) ne sont pas validés par un schéma. Sans convention commune, chaque équipe pose les siens et l'interopérabilité s'érode."
+        },
+        {
+          "title": "Immutabilité et données sensibles",
+          "description": "Un message publié est conservé pour la durée de rétention et ne peut pas être modifié. Y inclure des données personnelles complique la suppression demandée par le RGPD."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2620,6 +3088,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couplage fort entre émetteur et destinataire",
+          "description": "Une commande vise un service précis qui doit exécuter une action. L'émetteur connaît le destinataire et son contrat, ce qui réduit le découplage recherché avec la messagerie."
+        },
+        {
+          "title": "Résultat incertain",
+          "description": "L'émetteur ne sait pas si la commande a été exécutée, rejetée ou perdue. Il faut prévoir un événement de résultat, un timeout et une gestion des échecs."
+        },
+        {
+          "title": "Exécution en double dangereuse",
+          "description": "Avec une livraison at-least-once, une commande peut être relivrée : sans idempotence, l'action (facturation, débit) est effectuée deux fois."
+        },
+        {
+          "title": "Commandes périmées",
+          "description": "Une commande en attente dans un topic peut être exécutée bien après son émission, dans un contexte devenu différent. Il faut valider son actualité ou lui donner une expiration."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2686,6 +3172,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Payloads volumineux",
+          "description": "Transporter l'état complet plutôt qu'un delta alourdit les messages, le réseau et le stockage, surtout lorsque peu de champs changent."
+        },
+        {
+          "title": "Pas d'intention explicite",
+          "description": "Le destinataire doit déduire seul ce qui a changé et quoi en faire. Deux consommateurs peuvent interpréter le même document différemment."
+        },
+        {
+          "title": "Couplage au modèle de données de l'émetteur",
+          "description": "Le document expose la structure interne du producteur : ses évolutions se répercutent sur tous les consommateurs, d'où un risque de fuite d'implémentation."
+        },
+        {
+          "title": "Duplication d'état et divergence",
+          "description": "Chaque consommateur garde sa copie locale du document : elles peuvent diverger si des messages sont perdus, reçus dans le désordre ou traités avec retard."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2776,6 +3280,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Difficile de suivre le flux de bout en bout",
+          "description": "Les consommateurs réagissent chacun de leur côté : reconstituer ce qui se passe après un événement demande de la traçabilité (correlationId, tracing distribué) et une bonne cartographie."
+        },
+        {
+          "title": "Cohérence éventuelle",
+          "description": "Les consommateurs traitent l'événement à des moments différents. L'état global du système n'est cohérent qu'après un certain délai, ce qui complique les lectures immédiates."
+        },
+        {
+          "title": "Événements difficiles à faire évoluer",
+          "description": "Un événement publié devient un fait immuable dont dépendent des consommateurs inconnus. Changer son sens ou sa structure nécessite versionnage et compatibilité."
+        },
+        {
+          "title": "Granularité difficile à calibrer",
+          "description": "Trop fins, les événements multiplient le trafic et les dépendances ; trop épais, ils exposent des détails internes et deviennent des documents déguisés."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2865,6 +3387,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couplage temporel malgré l'asynchronisme",
+          "description": "Le demandeur attend une réponse : si le service est lent ou en panne, la requête expire. On retrouve les contraintes de disponibilité d'un appel synchrone avec la complexité de la messagerie."
+        },
+        {
+          "title": "Latence supérieure à un appel direct",
+          "description": "Deux passages par le broker (aller et retour) s'ajoutent au temps de traitement. Cela convient mal aux interactions à faible latence."
+        },
+        {
+          "title": "Gestion de la corrélation et des timeouts",
+          "description": "Il faut associer chaque réponse à sa requête, gérer les réponses tardives ou en double, et libérer les ressources d'attente. Une réponse arrivant après le timeout est perdue ou traitée à tort."
+        },
+        {
+          "title": "Topic de retour à gérer",
+          "description": "Chaque demandeur nécessite un topic de réponse ou un filtrage sur un topic partagé. La prolifération de topics ou la lecture de réponses destinées à d'autres alourdissent l'exploitation."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -2943,6 +3483,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Destination contrôlée par l'émetteur",
+          "description": "Le service publie sur le topic indiqué dans le message : une valeur erronée ou malveillante envoie des réponses à un mauvais endroit, voire vers un topic sensible. Il faut valider la destination."
+        },
+        {
+          "title": "Couplage caché aux topics de réponse",
+          "description": "Les topics de retour doivent exister, avec les bonnes ACL. Un topic supprimé ou renommé fait échouer la réponse sans que le demandeur le sache."
+        },
+        {
+          "title": "Header non typé et non validé",
+          "description": "Le champ replyTo est une simple chaîne dans les headers. Sans convention et sans contrôle, les erreurs se découvrent à l'exécution."
+        },
+        {
+          "title": "Fuite d'information sur la topologie",
+          "description": "Le message expose le nom des topics internes de l'émetteur à tous ses destinataires, ce qui révèle des détails d'architecture."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3029,6 +3587,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Propagation à faire respecter partout",
+          "description": "Le correlationId n'est utile que s'il est transmis à chaque étape. Un service qui l'oublie casse la chaîne et rend le suivi ou l'agrégation impossible."
+        },
+        {
+          "title": "Unicité et génération à cadrer",
+          "description": "Deux échanges qui partagent un identifiant ou un identifiant régénéré par erreur provoquent des regroupements et des réponses attribuées au mauvais échange."
+        },
+        {
+          "title": "Cardinalité et coût des états associés",
+          "description": "Les state stores et les logs indexés par correlationId grossissent avec le nombre d'échanges en cours. Le stockage et la rétention doivent être maîtrisés."
+        },
+        {
+          "title": "Convention plus que garantie technique",
+          "description": "Rien n'oblige les producteurs à renseigner l'identifiant ni à le faire correctement : cela repose sur des conventions, des intercepteurs et des contrôles."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3107,6 +3683,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Détection des trous, mais pas de correction",
+          "description": "Constater qu'un numéro manque ne le fait pas revenir. Il faut décider entre attendre, redemander ou abandonner, avec le risque de bloquer le flux ou de traiter une séquence incomplète."
+        },
+        {
+          "title": "Taille de séquence inconnue",
+          "description": "Sans indication de fin explicite, le consommateur ne sait pas quand la séquence est complète. Il faut un marqueur de dernier message ou un timeout."
+        },
+        {
+          "title": "Couplage entre producteur et consommateur",
+          "description": "Le producteur doit numéroter correctement et le consommateur connaître la convention. Un producteur qui redémarre peut casser la numérotation."
+        },
+        {
+          "title": "Complexité et état côté consommateur",
+          "description": "Reconstituer une séquence impose de mémoriser les messages reçus et l'état de la séquence, avec les problèmes de mémoire, de partitionnement et de restauration qui vont avec."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3189,6 +3783,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Expiration non appliquée par Kafka",
+          "description": "Kafka ne supprime pas un message à son expiration métier : c'est au consommateur de tester le header. Un consommateur qui l'ignore traite des messages périmés."
+        },
+        {
+          "title": "Horloges à synchroniser",
+          "description": "Comparer expiresAt à l'heure locale suppose des horloges alignées entre producteur et consommateur. Un décalage fait rejeter des messages valides ou accepter des périmés."
+        },
+        {
+          "title": "Les messages expirés sont quand même lus",
+          "description": "Un message périmé est quand même lu et consommé (offset avancé) avant d'être écarté : l'expiration économise le traitement, pas le stockage ni le transport."
+        },
+        {
+          "title": "Perte de données à traiter explicitement",
+          "description": "Les messages expirés sont redirigés vers un topic dédié : il faut décider s'ils sont archivés, alertés ou détruits, sous peine de perdre silencieusement des informations."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3274,6 +3886,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Header non validé",
+          "description": "contentType et schemaVersion sont de simples chaînes. Un producteur qui les renseigne mal envoie un message que le consommateur désérialise avec le mauvais contrat."
+        },
+        {
+          "title": "Multiplication des formats à supporter",
+          "description": "Chaque format ou version annoncée doit être géré par les consommateurs. Le nombre de désérialiseurs et de branches de code augmente avec le temps."
+        },
+        {
+          "title": "Dépendance forte au Schema Registry",
+          "description": "La résolution du format passe par le registre : son indisponibilité ou un schéma supprimé empêche de lire des messages pourtant présents dans le topic."
+        },
+        {
+          "title": "Anciens formats à conserver",
+          "description": "Les messages conservés dans le topic gardent leur version d'origine. Il faut conserver les anciens schémas et désérialiseurs aussi longtemps que la rétention l'exige."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3374,6 +4004,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Latence cumulée",
+          "description": "Chaque étape ajoute un saut par topic, avec sérialisation, écriture et lecture. La latence de bout en bout est la somme de celles de tous les filtres."
+        },
+        {
+          "title": "Prolifération de services et de topics",
+          "description": "Chaque filtre demande un déploiement, une supervision et des topics intermédiaires à stocker. Le nombre d'éléments à opérer augmente avec la longueur de la chaîne."
+        },
+        {
+          "title": "Diagnostic et corrélation complexes",
+          "description": "Trouver l'étape qui a échoué ou déformé un message nécessite du tracing distribué et des correlationId, car chaque filtre ne voit qu'un fragment du traitement."
+        },
+        {
+          "title": "Pas de transaction sur l'ensemble de la chaîne",
+          "description": "Chaque étape est indépendante : une défaillance à la fin ne défait pas ce que les étapes précédentes ont produit. Il faut prévoir des compensations et de l'idempotence."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3463,6 +4111,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Logique d'orchestration concentrée",
+          "description": "Le composant qui enchaîne les étapes concentre de la logique métier et de routage. Il grossit, devient difficile à tester et à faire évoluer, et forme un point de contact incontournable."
+        },
+        {
+          "title": "Boîte noire pour le reste du SI",
+          "description": "Un seul topic d'entrée et de sortie masque les étapes internes. Le suivi, l'audit et le diagnostic d'un traitement doivent être conçus explicitement."
+        },
+        {
+          "title": "Échecs partiels difficiles à gérer",
+          "description": "Si une étape interne échoue après que d'autres ont réussi, il faut compenser ou rejouer ce qui a été fait, sans transaction globale."
+        },
+        {
+          "title": "Scalabilité liée à l'ensemble",
+          "description": "Toutes les étapes se déploient et se dimensionnent ensemble. Une étape lente ou gourmande pénalise tout le composant, contrairement à des filtres indépendants."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3587,6 +4253,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Latence dictée par le plus lent",
+          "description": "La réponse consolidée n'est produite qu'une fois les réponses requises reçues ou le timeout atteint. Un seul destinataire lent ou en panne retarde toute la requête."
+        },
+        {
+          "title": "Complétude et réponses tardives",
+          "description": "Il faut décider combien de réponses suffisent et que faire de celles qui arrivent après le timeout. Le résultat peut être partiel, avec un impact fonctionnel à définir."
+        },
+        {
+          "title": "Amplification de charge",
+          "description": "Chaque requête sollicite plusieurs destinataires en parallèle. Le trafic et la charge côté services sollicités augmentent, y compris pour des réponses finalement inutilisées."
+        },
+        {
+          "title": "Coût de l'agrégation",
+          "description": "L'Aggregator apporte de l'état (state store, fenêtre), du partitionnement par correlationId et de la complexité d'exploitation, comme dans le pattern Aggregator."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3676,6 +4360,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Le message porte la logique du traitement",
+          "description": "La liste des étapes voyage dans le header : modifier un enchaînement ou reconstituer ce qui a été prévu demande d'inspecter les messages, pas seulement le code des services."
+        },
+        {
+          "title": "Couplage entre étapes et vocabulaire commun",
+          "description": "Chaque étape doit être identifiée par un nom compris par le routeur. Renommer, supprimer ou ajouter une étape impacte tous les producteurs qui la référencent."
+        },
+        {
+          "title": "Header modifiable à risque",
+          "description": "Un slip erroné ou altéré change le parcours d'un message, y compris vers des étapes non autorisées. Sa validité et son intégrité doivent être contrôlées."
+        },
+        {
+          "title": "Étapes sans contexte global et sans reprise native",
+          "description": "Un échec en cours de route laisse un slip partiellement consommé. Reprendre ou rejouer exige de conserver le slip d'origine ou l'étape atteinte."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3792,6 +4494,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "État centralisé à persister et à fiabiliser",
+          "description": "L'état de chaque processus doit être stocké de façon durable et cohérente. Une perte, une corruption ou une mise à jour concurrente de cet état bloque ou fausse les processus en cours."
+        },
+        {
+          "title": "Point de couplage et goulet d'étranglement",
+          "description": "Le Process Manager connaît tous les participants et enchaîne leurs commandes. Il devient un point de passage obligé qui doit évoluer à chaque changement de processus."
+        },
+        {
+          "title": "Compensations complexes",
+          "description": "Sans transaction distribuée, annuler un processus implique des actions de compensation par étape, elles-mêmes susceptibles d'échouer. Les cas limites sont nombreux."
+        },
+        {
+          "title": "Processus bloqués et traitement des événements tardifs",
+          "description": "Un événement manquant laisse un processus en attente indéfinie. Il faut prévoir timeouts, relances et gestion des événements qui arrivent dans le désordre ou en double."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3884,6 +4604,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Point de dépendance et de concentration",
+          "description": "Tous les échanges passent par le broker : sa disponibilité, sa capacité et son exploitation conditionnent l'ensemble. Une erreur de configuration a un impact large."
+        },
+        {
+          "title": "Charge d'exploitation importante",
+          "description": "Un cluster Kafka demande de l'expertise (dimensionnement, mises à jour, monitoring, capacité disque). Cela s'ajoute à la gestion des topics, des ACL et des quotas."
+        },
+        {
+          "title": "Risque de « big ball of mud » par les topics",
+          "description": "Le broker ne connaît pas les applications : sans gouvernance de la nomenclature, de la propriété et du cycle de vie des topics, le nombre de flux devient ingérable."
+        },
+        {
+          "title": "Isolation entre domaines à construire",
+          "description": "Les ACL et quotas séparent les sous-systèmes, mais un domaine bruyant peut pénaliser les autres sur un cluster partagé si l'isolation n'est pas correctement configurée."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -3978,6 +4716,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Un adaptateur par format source",
+          "description": "Chaque nouveau format (XML, JSON, CSV) exige une nouvelle logique de conversion. Le nombre d'adaptateurs croît avec les sources et chacun doit être testé."
+        },
+        {
+          "title": "Perte d'information et ambiguïtés",
+          "description": "Convertir plusieurs représentations vers un format commun impose des choix sur les champs manquants, les formats de dates ou les valeurs par défaut, avec des pertes possibles."
+        },
+        {
+          "title": "Composant central à haute charge",
+          "description": "Toutes les sources passent par le service de normalisation. Sa capacité et sa disponibilité conditionnent l'ensemble, et une erreur affecte toutes les sources à la fois."
+        },
+        {
+          "title": "Gestion des données non convertibles",
+          "description": "Les messages qui ne peuvent pas être normalisés doivent aller vers un Invalid Message Channel ou un DLT, avec un processus de correction associé."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4088,6 +4844,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Gouvernance lourde et évolutions lentes",
+          "description": "Toute modification du modèle commun implique de nombreuses équipes. Le rythme d'évolution est ralenti par la coordination, et le modèle risque d'être en retard sur les besoins."
+        },
+        {
+          "title": "Dénominateur commun appauvri",
+          "description": "Un modèle qui doit convenir à tous perd les spécificités de chaque domaine. Il peut être à la fois trop générique pour être utile et trop complexe pour chacun."
+        },
+        {
+          "title": "Deux traductions par échange",
+          "description": "Chaque adaptateur convertit vers, puis depuis le modèle canonique. Cela ajoute du code, de la latence et des risques de perte à chaque échange."
+        },
+        {
+          "title": "Couplage de tous au modèle",
+          "description": "Bien que les systèmes ne se connaissent plus entre eux, ils dépendent tous du modèle canonique : un changement cassant les impacte tous simultanément."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4153,6 +4927,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couche d'abstraction supplémentaire",
+          "description": "Encapsuler Kafka derrière une interface applicative ajoute du code à maintenir, et peut masquer des fonctionnalités utiles de l'API (partitionnement, headers, transactions)."
+        },
+        {
+          "title": "Fuite d'abstraction inévitable",
+          "description": "Les particularités de Kafka (ordre par partition, at-least-once, rebalancing) remontent malgré l'interface. Les ignorer conduit à des erreurs d'utilisation."
+        },
+        {
+          "title": "Configuration et versions à harmoniser",
+          "description": "Les endpoints partagent des ProducerFactory et des réglages : une mauvaise valeur par défaut (acks, sérialiseur, timeouts) se propage à tous les services qui l'utilisent."
+        },
+        {
+          "title": "Difficulté à tester",
+          "description": "Tester des composants dépendant de Kafka nécessite un broker embarqué ou des conteneurs. Les tests sont plus lents et plus fragiles que des tests unitaires classiques."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4218,6 +5010,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Abstraction qui masque des réalités Kafka",
+          "description": "Une interface métier comme publishOrderCreated cache les notions d'ordre par clé, de partition, d'acks ou d'échec d'envoi. Les développeurs peuvent ignorer des comportements qui affectent pourtant leur logique."
+        },
+        {
+          "title": "Code d'interface supplémentaire à maintenir",
+          "description": "Chaque gateway est une couche de plus à écrire, documenter et faire évoluer. Sur des besoins simples, elle ajoute plus de cérémonie que de valeur."
+        },
+        {
+          "title": "Gestion des erreurs d'envoi ambiguë",
+          "description": "Un appel de méthode qui semble local peut échouer ou expirer à cause du broker. Il faut décider ce que remonte l'interface (exception, futur, callback), sous peine d'échecs silencieux."
+        },
+        {
+          "title": "Risque d'interface trop générique",
+          "description": "Une gateway qui grossit et expose un peu tout devient un fourre-tout, et retrouve le couplage à Kafka qu'elle devait masquer."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4297,6 +5107,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Code de mapping en plus",
+          "description": "Chaque conversion entre l'objet du domaine et le message est à écrire et à maintenir. Le nombre de mappers croît avec le nombre de types échangés."
+        },
+        {
+          "title": "Risque de divergence entre modèle et message",
+          "description": "Un champ ajouté au domaine mais oublié dans le mapper, ou l'inverse, passe inaperçu à la compilation et se découvre à l'exécution chez les consommateurs."
+        },
+        {
+          "title": "Coût de conversion",
+          "description": "Copier et transformer des objets à chaque message consomme du CPU et de la mémoire. Sur des flux à fort volume, cela devient mesurable."
+        },
+        {
+          "title": "Pertes de sens à la traduction",
+          "description": "Le message plus plat ou plus pauvre que l'objet du domaine impose des choix (types, valeurs nulles, hiérarchies). Ils peuvent créer des ambiguïtés difficiles à tester."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4377,6 +5205,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Transaction Kafka ≠ transaction base de données",
+          "description": "KafkaTransactionManager ne couvre que Kafka. Une opération touchant aussi une base externe n'est pas atomique : sans outbox ou transaction distribuée, on retrouve des messages publiés sans écriture, ou l'inverse."
+        },
+        {
+          "title": "Surcoût en latence et en débit",
+          "description": "Les transactions Kafka ajoutent des échanges avec le coordinateur et retardent la visibilité des messages jusqu'au commit. Elles dégradent le débit par rapport à un envoi simple."
+        },
+        {
+          "title": "Complexité de configuration et d'exploitation",
+          "description": "transactional.id, isolation.level=read_committed et zombie fencing sont à configurer avec soin. Une erreur produit des blocages ou des doublons difficiles à diagnostiquer."
+        },
+        {
+          "title": "Garanties limitées aux frontières de Kafka",
+          "description": "L'exactly-once ne vaut que pour le flux lu puis écrit dans Kafka. Les effets externes (appel HTTP, e-mail) échappent à la transaction et restent à protéger par l'idempotence."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4466,6 +5312,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Consumer unique = goulet d'étranglement",
+          "description": "Un seul point reçoit tous les messages puis les distribue : sa capacité conditionne le débit total, et un handler lent peut ralentir tous les types de messages."
+        },
+        {
+          "title": "Couplage du dispatcher à tous les handlers",
+          "description": "Le dispatcher connaît la liste des types et leurs gestionnaires. Ajouter un type de message impose de modifier ce composant central."
+        },
+        {
+          "title": "Ordre et concurrence à arbitrer",
+          "description": "Un pool de threads par type améliore le parallélisme mais casse l'ordre au sein d'une partition et complique le commit d'offset. Il faut gérer soi-même la cohérence."
+        },
+        {
+          "title": "Isolation des erreurs moins naturelle",
+          "description": "Un handler défaillant ou lent peut bloquer le consumer entier et la partition, contrairement à des consumers séparés qui s'isolent les uns des autres."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4531,6 +5395,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Messages lus mais inutiles",
+          "description": "Le consommateur reçoit d'abord tous les messages du topic avant d'écarter ceux qui ne l'intéressent pas : le filtrage ne réduit ni le trafic réseau ni la lecture sur le broker."
+        },
+        {
+          "title": "Critères de sélection couplés au producteur",
+          "description": "Le filtre repose sur des headers ou champs comme eventType ou tenant. Un producteur qui les renseigne mal ou les renomme rend le consommateur aveugle sans erreur visible."
+        },
+        {
+          "title": "Messages ignorés = perte silencieuse potentielle",
+          "description": "Un critère trop strict écarte des messages légitimes sans trace. Il faut des métriques de messages ignorés pour détecter les dérives."
+        },
+        {
+          "title": "Alternative plus propre souvent disponible",
+          "description": "Sélectionner par topic dédié (Datatype Channel) ou par Kafka Streams évite de polluer chaque consommateur avec du code de tri."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4611,6 +5493,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Limité par la rétention du topic",
+          "description": "Un abonné indisponible plus longtemps que la rétention perd définitivement les messages non lus. La durabilité n'est garantie que dans cette fenêtre."
+        },
+        {
+          "title": "Lag et retard à rattraper",
+          "description": "Au retour, l'abonné doit traiter tout le retard accumulé, ce qui provoque un pic de charge sur lui et sur les systèmes en aval qu'il sollicite."
+        },
+        {
+          "title": "Offsets et groupId à protéger",
+          "description": "Le groupId stable porte l'état de progression. Le renommer, le supprimer ou réinitialiser ses offsets (par erreur ou par purge) fait rejouer ou perdre des messages."
+        },
+        {
+          "title": "Stockage prolongé du côté broker",
+          "description": "Pour supporter des indisponibilités longues, il faut allonger la rétention, avec un coût de stockage et des données sensibles conservées plus longtemps."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4690,6 +5590,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couplage temporel avec le service appelé",
+          "description": "Le listener appelle un service synchrone : si celui-ci est lent ou en panne, le consommateur se bloque, la partition prend du retard et max.poll.interval.ms peut être dépassé."
+        },
+        {
+          "title": "Transaction locale et offset non atomiques",
+          "description": "Le service métier peut valider sa transaction puis le commit d'offset échouer, ce qui fait rejouer le message. Sans idempotence, l'opération s'exécute deux fois."
+        },
+        {
+          "title": "Gestion des erreurs à concevoir",
+          "description": "Entre erreur transitoire (retry) et erreur définitive (Dead Letter Channel), le listener doit distinguer les cas ; une mauvaise classification bloque ou perd des messages."
+        },
+        {
+          "title": "Adaptateur fin qui grossit",
+          "description": "Le listener censé rester un simple adaptateur accumule souvent validation, mapping et logique métier, et finit par lier le service au broker."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4755,6 +5673,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Le canal est aussi un contrat implicite",
+          "description": "Le nom du topic et son schéma lient producteurs et consommateurs. Sans propriétaire clair ni documentation, personne n'ose le modifier."
+        },
+        {
+          "title": "Nomenclature et cycle de vie à gouverner",
+          "description": "Sans convention de nommage, de rétention et de suppression, les topics s'accumulent, certains deviennent orphelins et leurs coûts persistent."
+        },
+        {
+          "title": "Configuration du canal déterminante",
+          "description": "Partitions, rétention et réplication définissent les garanties réelles du canal. Un mauvais choix initial est coûteux à corriger, en particulier le nombre de partitions."
+        },
+        {
+          "title": "Visibilité limitée sur les usages",
+          "description": "Savoir qui produit et qui consomme un topic n'est pas évident : il faut de l'outillage (catalogue, lineage) pour analyser l'impact d'un changement."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4833,6 +5769,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Composant à maintenir par système connecté",
+          "description": "Chaque système externe nécessite son adaptateur, avec ses particularités (protocole, authentification, formats, erreurs). Le parc d'adaptateurs devient vite une charge."
+        },
+        {
+          "title": "Fiabilité limitée par le système externe",
+          "description": "L'adaptateur hérite des faiblesses de la source ou de la cible : indisponibilité, lenteur, absence d'idempotence ou de mécanisme de reprise."
+        },
+        {
+          "title": "Doublons et pertes aux frontières",
+          "description": "La lecture d'une source et la publication dans Kafka ne sont pas atomiques. Un crash entre les deux provoque doublons ou pertes, sauf mécanisme de curseur ou d'outbox."
+        },
+        {
+          "title": "Couplage au format du système legacy",
+          "description": "La conversion vers l'événement Kafka expose parfois la structure interne du système source, et fait dépendre le reste du SI de ses particularités."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4900,6 +5854,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Latence et retard de réplication",
+          "description": "Le bridge lit puis republie : les deux systèmes ne sont jamais parfaitement synchrones. Le décalage varie avec la charge et peut poser problème aux consommateurs côté cible."
+        },
+        {
+          "title": "Ordre, doublons et offsets non conservés",
+          "description": "Les offsets diffèrent entre clusters, et la relecture après un incident peut dupliquer des messages. L'ordre n'est préservé que sous des conditions de partitionnement précises."
+        },
+        {
+          "title": "Composant critique à surveiller",
+          "description": "Si le bridge s'arrête, le cluster cible ne reçoit plus rien, souvent sans erreur visible côté producteurs. Le lag de réplication doit être supervisé."
+        },
+        {
+          "title": "Sécurité et gouvernance sur deux périmètres",
+          "description": "Le bridge dispose d'accès sur les deux clusters et transporte les données d'un domaine de confiance à l'autre : ACL, chiffrement et conformité doivent être maîtrisés des deux côtés."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -4977,6 +5949,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Canal privilégié à protéger",
+          "description": "Ce topic permet de suspendre des consommateurs ou de rafraîchir des règles. Une commande falsifiée ou envoyée à tort peut arrêter la production : signature, ACL et audit sont obligatoires."
+        },
+        {
+          "title": "Dépendance au bus qu'on veut contrôler",
+          "description": "Le contrôle passe par Kafka : si le cluster est en difficulté, on ne peut plus piloter les composants au moment où on en a le plus besoin."
+        },
+        {
+          "title": "Diffusion et exécution incertaines",
+          "description": "Une commande d'administration n'est pas forcément reçue et appliquée par toutes les instances au même moment. Les états entre instances peuvent diverger temporairement."
+        },
+        {
+          "title": "Surface d'administration supplémentaire",
+          "description": "Chaque service doit exposer un handler d'administration, à développer, tester et sécuriser. Plus les commandes sont nombreuses, plus le risque d'usage erroné augmente."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5072,6 +6062,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Chemin alternatif à maintenir",
+          "description": "Le circuit de validation ou de quarantaine est un flux supplémentaire à coder, tester et superviser, alors qu'il est utilisé rarement et donc peu éprouvé."
+        },
+        {
+          "title": "Risque d'oubli du détour actif",
+          "description": "Un détour activé et jamais désactivé continue à ralentir ou bloquer le flux normal. Il faut visibilité, alerte et durée de vie limitée."
+        },
+        {
+          "title": "Latence et engorgement",
+          "description": "Le détour ajoute un saut ou une attente. Si l'étape de validation est lente ou manuelle, les messages s'accumulent et le flux aval est privé de données."
+        },
+        {
+          "title": "Ordre et cohérence perturbés à la bascule",
+          "description": "Au moment d'activer ou de retirer le détour, des messages sont en vol sur les deux chemins. Leur ordre relatif n'est plus garanti."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5151,6 +6159,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Header qui grossit à chaque étape",
+          "description": "Chaque service ajoute son nom : la taille du message augmente avec la longueur de la chaîne, et le header n'est ni validé ni typé."
+        },
+        {
+          "title": "Historique non fiable et modifiable",
+          "description": "Chaque service se déclare lui-même : un oubli, une erreur ou une falsification rend l'historique faux. Il ne remplace pas une trace faisant foi, comme un log ou OpenTelemetry."
+        },
+        {
+          "title": "Duplication avec le tracing distribué",
+          "description": "OpenTelemetry couvre déjà le besoin sans toucher au message. Maintenir les deux crée de la redondance et deux sources de vérité potentiellement différentes."
+        },
+        {
+          "title": "Fuite d'informations sur l'architecture",
+          "description": "Les noms de services traversés sont exposés à tous les consommateurs, y compris externes, ce qui révèle la topologie interne."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5231,6 +6257,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Duplication des données et coût de stockage",
+          "description": "Une copie normalisée en PostgreSQL ou en object store s'ajoute à la rétention Kafka. Le volume stocké double, avec des coûts, des sauvegardes et des purges à gérer."
+        },
+        {
+          "title": "Cohérence entre Kafka et le store",
+          "description": "L'écriture du store est distincte de la publication ou de la consommation : un crash laisse des messages absents ou présents en double, sauf mécanisme d'idempotence."
+        },
+        {
+          "title": "Données sensibles conservées longtemps",
+          "description": "Conserver des messages pour audit ou rejeu entre en tension avec le RGPD (minimisation, droit à l'effacement). La durée et la protection sont à définir."
+        },
+        {
+          "title": "Charge d'écriture supplémentaire",
+          "description": "Un flux à fort débit peut saturer la base ou le stockage qui archive les messages. Le store devient un composant critique à dimensionner."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5308,6 +6352,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Point unique de passage et de défaillance",
+          "description": "Tous les échanges avec le système externe transitent par le proxy : sa disponibilité, sa capacité et sa latence conditionnent la relation avec ce système."
+        },
+        {
+          "title": "Logique métier qui s'infiltre",
+          "description": "Authentification, mapping et règles d'accès s'accumulent dans le proxy. Il devient un composant complexe, difficile à tester et à faire évoluer."
+        },
+        {
+          "title": "Corrélation et état à conserver",
+          "description": "Le proxy doit se souvenir des requêtes pour router les réponses vers le bon demandeur, ce qui suppose état, timeouts et gestion des réponses perdues."
+        },
+        {
+          "title": "Opacité pour les deux extrémités",
+          "description": "Les applications ignorent ce que fait le proxy : en cas de comportement inattendu, le diagnostic est plus difficile et la responsabilité entre les équipes moins claire."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5386,6 +6448,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Pollution possible des données métier",
+          "description": "Malgré un tenant ou un eventType réservé, un consommateur qui ne les filtre pas traitera le message de test comme un vrai et faussera des indicateurs ou des effets de bord."
+        },
+        {
+          "title": "Couverture partielle",
+          "description": "Un message synthétique valide le parcours technique, pas les cas réels (volumes, formats, cas limites). Un canal « vert » peut masquer des défauts sur des données réelles."
+        },
+        {
+          "title": "Charge et bruit de monitoring",
+          "description": "Publier régulièrement des messages ajoute du trafic, des métriques et des alertes. Un intervalle trop court ou des seuils mal réglés génèrent des faux positifs."
+        },
+        {
+          "title": "Conventions à faire respecter",
+          "description": "Chaque consommateur doit reconnaître et traiter à part les messages de test. Un oubli dans un seul service suffit à rompre l'isolation."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5468,6 +6548,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Perte de données irréversible",
+          "description": "Purger un canal supprime des messages potentiellement non traités, sans retour possible. Une erreur de cible ou de moment cause une perte métier."
+        },
+        {
+          "title": "Compétition avec les consommateurs actifs",
+          "description": "Manipuler les offsets ou recréer le topic pendant que des consommateurs tournent provoque des erreurs, des relectures ou des états incohérents. Il faut les arrêter avant."
+        },
+        {
+          "title": "Opération sensible à protéger",
+          "description": "La purge doit être réservée à quelques rôles, journalisée et idéalement soumise à validation. Un accès trop large ouvre un risque d'erreur ou de malveillance."
+        },
+        {
+          "title": "Suppression/recréation de topic invasive",
+          "description": "Recréer un topic perd sa configuration, ses ACL et ses offsets de groupes, et peut casser des consommateurs ou des dépendances qui s'y réfèrent."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5547,6 +6645,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Latence élevée",
+          "description": "L'échange par fichiers est par nature en lots : les données n'arrivent qu'à la fin de la génération du fichier puis du passage du poller, souvent quotidiennement."
+        },
+        {
+          "title": "Formats et contrats fragiles",
+          "description": "Le format de fichier (colonnes, encodage, séparateurs) est un contrat implicite. Un changement côté producteur casse le traitement sans avertissement."
+        },
+        {
+          "title": "Fichiers incomplets, doublons et reprises",
+          "description": "Détecter qu'un fichier est complet, éviter de le traiter deux fois et reprendre après un échec en cours demandent des mécanismes explicites (fichier témoin, déplacement, checksum)."
+        },
+        {
+          "title": "Pics de charge à l'ingestion",
+          "description": "Un gros fichier converti en événements génère une rafale de messages, qui peut saturer le topic et les consommateurs en aval."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5645,6 +6761,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couplage très fort au schéma",
+          "description": "Toutes les applications dépendent de la même structure de tables : la modifier oblige à coordonner tous les services, et rend chaque évolution risquée."
+        },
+        {
+          "title": "Contention et goulet d'étranglement",
+          "description": "Les accès concurrents de plusieurs applications provoquent verrous, blocages et dégradation des performances. La base devient un point unique de saturation."
+        },
+        {
+          "title": "Pas de découplage des disponibilités",
+          "description": "Si la base est indisponible, toutes les applications le sont. Il n'y a ni tampon ni asynchronisme pour absorber une panne."
+        },
+        {
+          "title": "Modèle de données compromis",
+          "description": "Le schéma doit satisfaire tous les usages : il devient un compromis. Les règles d'intégrité et la propriété des données sont floues entre les équipes."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5721,6 +6855,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Couplage temporel et de disponibilité",
+          "description": "L'appelant attend la réponse : si le service distant est lent ou en panne, l'appelant l'est aussi. Les pannes se propagent en cascade sans mécanisme de protection."
+        },
+        {
+          "title": "Couplage à l'interface et à la localisation",
+          "description": "L'appelant connaît l'API exacte et l'adresse du service. Toute modification du contrat ou de l'endpoint impacte directement les clients."
+        },
+        {
+          "title": "Illusion d'un appel local",
+          "description": "Un appel distant peut échouer, expirer ou être exécuté plusieurs fois après retry. Il faut gérer timeouts, retries, idempotence et circuit breakers."
+        },
+        {
+          "title": "Pas de tampon ni de lissage de charge",
+          "description": "Un pic de trafic frappe directement le service appelé, sans file pour l'absorber. Le dimensionnement doit couvrir les pointes."
+        }
+      ],
       "relatedPatterns": []
     },
     {
@@ -5788,6 +6940,24 @@
           ]
         }
       },
+      "negativeEffects": [
+        {
+          "title": "Complexité de conception et de raisonnement",
+          "description": "L'asynchronisme ajoute de la complexité : cohérence éventuelle, ordre, doublons, corrélation. Le raisonnement séquentiel d'un appel direct n'est plus valable."
+        },
+        {
+          "title": "Débogage et traçabilité plus difficiles",
+          "description": "Un traitement traverse plusieurs services et topics. Suivre un message de bout en bout suppose corrélation, tracing distribué et bonne observabilité."
+        },
+        {
+          "title": "Infrastructure à exploiter",
+          "description": "Le broker devient un composant critique à dimensionner, superviser et sécuriser, avec les compétences d'exploitation que cela demande."
+        },
+        {
+          "title": "Pas de réponse immédiate",
+          "description": "Les cas nécessitant un résultat immédiat (validation, lecture) s'accommodent mal du modèle : il faut ajouter du Request-Reply ou recourir à un appel synchrone."
+        }
+      ],
       "relatedPatterns": []
     }
   ]

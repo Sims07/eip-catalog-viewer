@@ -37,6 +37,7 @@ Chaque pattern contient :
 - `official.url`, `official.diagram`
 - `technical.stack`, `technical.description`
 - `technical.diagram.nodes`, `technical.diagram.edges`
+- `negativeEffects` : liste de `{ title, description }` décrivant les inconvénients et coûts induits par l'emploi du pattern (4 par pattern) ; la section « Effets négatifs » de la popup est masquée si le champ est absent ou vide
 - `relatedPatterns`
 
 Les schémas techniques sont des adaptations Kafka + Spring Boot propres à cette application ; ils ne constituent pas le schéma officiel EIP.

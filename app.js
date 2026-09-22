@@ -117,6 +117,7 @@ function normalizePattern(pattern, categoriesById) {
     ...pattern,
     category: category ? category.name : pattern.category,
     officialUrl: pattern.official?.url || '',
+    negativeEffects: Array.isArray(pattern.negativeEffects) ? pattern.negativeEffects : [],
     techImplementation: pattern.technical
       ? {
           description: pattern.technical.description || '',
@@ -192,6 +193,8 @@ const modalProblem = document.getElementById('modalProblem');
 const modalSolution = document.getElementById('modalSolution');
 const modalTags = document.getElementById('modalTags');
 const modalDescription = document.getElementById('modalDescription');
+const modalNegativeSection = document.getElementById('modalNegativeSection');
+const modalNegativeEffects = document.getElementById('modalNegativeEffects');
 const modalDiagram = document.getElementById('modalDiagram');
 const modalOfficialImage = document.getElementById('modalOfficialImage');
 const modalOfficialLink = document.getElementById('modalOfficialLink');
@@ -361,6 +364,36 @@ function renderPatterns() {
   }).join('');
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
+// Affiche la section « Effets négatifs » ; elle est masquée tant qu'un pattern n'en déclare aucun.
+function renderNegativeEffects(effects) {
+  if (!modalNegativeSection || !modalNegativeEffects) return;
+
+  if (!effects || effects.length === 0) {
+    modalNegativeSection.classList.add('hidden');
+    modalNegativeEffects.innerHTML = '';
+    return;
+  }
+
+  modalNegativeEffects.innerHTML = effects.map(effect => `
+    <li class="modal-info-block modal-info-negative">
+      <div class="mb-1 font-bold text-slate-900">${escapeHtml(effect.title)}</div>
+      <p class="text-sm leading-6 text-slate-600">${escapeHtml(effect.description)}</p>
+    </li>
+  `).join('');
+
+  modalNegativeSection.classList.remove('hidden');
+}
+
 function openTechModal(patternId) {
   const pattern = patternsData.find(p => p.id === patternId);
 
@@ -383,6 +416,7 @@ function openTechModal(patternId) {
   `).join('');
 
   modalDescription.textContent = pattern.techImplementation.description;
+  renderNegativeEffects(pattern.negativeEffects);
   modalDiagram.innerHTML = renderArchDiagram(pattern.techImplementation);
 
   const imageUrl = pattern.official?.diagram || '';

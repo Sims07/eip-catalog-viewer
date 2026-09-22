@@ -195,6 +195,10 @@ body.tech-scroll-locked {
   border-left: 3px solid #10b981;
 }
 
+.modal-info-negative {
+  border-left: 3px solid #e11d48;
+}
+
 
 /* =========================================================
    Responsive modal
